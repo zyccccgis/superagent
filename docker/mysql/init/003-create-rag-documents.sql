@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS rag_documents (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  document_id VARCHAR(64) NOT NULL COMMENT '对外暴露的文档ID',
+  file_name VARCHAR(255) NOT NULL COMMENT '原始文件名',
+  file_path VARCHAR(1000) NOT NULL COMMENT '服务端文件路径',
+  file_size BIGINT NOT NULL DEFAULT 0 COMMENT '文件大小，单位字节',
+  extension VARCHAR(32) NOT NULL DEFAULT '' COMMENT '文件扩展名',
+  status VARCHAR(32) NOT NULL DEFAULT 'UPLOADED' COMMENT '文档状态：UPLOADED/INDEXING/INDEXED/FAILED',
+  chunk_count INT NOT NULL DEFAULT 0 COMMENT '索引后的片段数量',
+  error_message TEXT DEFAULT NULL COMMENT '索引失败原因',
+  indexed_at DATETIME(3) DEFAULT NULL COMMENT '索引完成时间',
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_document_id (document_id),
+  KEY idx_file_path (file_path(191)),
+  KEY idx_status_updated_at (status, updated_at),
+  KEY idx_file_name (file_name),
+  KEY idx_updated_at (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='RAG文档元数据表';

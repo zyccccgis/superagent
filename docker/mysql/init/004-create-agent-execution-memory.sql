@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS agent_execution_memory (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  execution_id VARCHAR(64) NOT NULL COMMENT '执行ID',
+  session_id VARCHAR(64) DEFAULT NULL COMMENT '会话ID',
+  user_input LONGTEXT DEFAULT NULL COMMENT '用户输入',
+  agent_output LONGTEXT DEFAULT NULL COMMENT 'Agent输出',
+  memory_index_snapshot LONGTEXT DEFAULT NULL COMMENT '长期记忆索引快照',
+  short_memory_snapshot LONGTEXT DEFAULT NULL COMMENT '短期记忆快照',
+  status VARCHAR(32) NOT NULL COMMENT '执行状态',
+  error_message TEXT DEFAULT NULL COMMENT '错误信息',
+  started_at DATETIME(3) DEFAULT NULL COMMENT '开始时间',
+  finished_at DATETIME(3) DEFAULT NULL COMMENT '结束时间',
+  duration_ms BIGINT DEFAULT NULL COMMENT '耗时毫秒',
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_execution_id (execution_id),
+  KEY idx_session_id_created_at (session_id, created_at),
+  KEY idx_status_created_at (status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent执行记忆表';

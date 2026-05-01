@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperBiz Agent Console</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/es/highlight.min.js"></script>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="side-nav">
+            <div class="brand">
+                <div class="brand-mark">S</div>
+                <div>
+                    <div class="brand-name">SuperBiz Agent</div>
+                    <div class="brand-subtitle">OnCall Console</div>
+                </div>
+            </div>
+
+            <nav class="nav-list" aria-label="主导航">
+                <button class="nav-item active" id="chatPageBtn" type="button">
+                    <span class="nav-icon">●</span>
+                    <span>对话窗口</span>
+                </button>
+                <button class="nav-item" id="historyPageBtn" type="button">
+                    <span class="nav-icon">▦</span>
+                    <span>记忆系统</span>
+                </button>
+                <button class="nav-item" id="ragPageBtn" type="button">
+                    <span class="nav-icon">◎</span>
+                    <span>RAG 知识库</span>
+                </button>
+            </nav>
+
+            <div class="side-status">
+                <div class="status-label">当前 Session</div>
+                <div class="status-value" id="sidebarSessionId">-</div>
+                <button class="text-action" id="copySessionBtn" type="button">复制 ID</button>
+            </div>
+        </aside>
+
+        <main class="content-area">
+            <section class="page active" id="chatPage">
+                <header class="page-header">
+                    <div>
+                        <p class="eyebrow">Live Conversation</p>
+                        <h1>智能 OnCall 对话</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="secondary-btn" id="newSessionBtn" type="button">新会话</button>
+                        <button class="secondary-btn" id="clearBackendSessionBtn" type="button">清空后端历史</button>
+                        <button class="accent-btn" id="aiOpsBtn" type="button">AI Ops</button>
+                    </div>
+                </header>
+
+                <div class="chat-layout">
+                    <section class="conversation-panel">
+                        <div class="conversation-toolbar">
+                            <div>
+                                <div class="toolbar-title">会话消息</div>
+                                <div class="toolbar-meta" id="chatMeta">准备就绪</div>
+                            </div>
+                            <div class="segmented">
+                                <button class="segment active" data-mode="quick" type="button">快速</button>
+                                <button class="segment" data-mode="stream" type="button">流式</button>
+                            </div>
+                        </div>
+
+                        <div class="messages" id="messages">
+                            <div class="empty-state">
+                                <div class="empty-title">开始一次诊断对话</div>
+                                <div class="empty-copy">你可以询问故障现象、日志、告警或让 AI Ops 自动生成诊断报告。</div>
+                            </div>
+                        </div>
+
+                        <div class="composer">
+                            <input id="messageInput" class="composer-input" type="text" maxlength="1000" placeholder="输入问题，例如：帮我分析 CPU 使用率过高的原因">
+                            <button class="icon-btn" id="uploadBtn" type="button" title="上传知识库文件">＋</button>
+                            <button class="primary-btn" id="sendBtn" type="button">发送</button>
+                            <input id="fileInput" type="file" accept=".txt,.md,.markdown" hidden>
+                        </div>
+                    </section>
+
+                    <aside class="insight-panel">
+                        <div class="panel-block">
+                            <div class="block-heading">后端会话概要</div>
+                            <div class="summary-grid">
+                                <div class="summary-item">
+                                    <span>消息对数</span>
+                                    <strong id="sessionPairCount">-</strong>
+                                </div>
+                                <div class="summary-item">
+                                    <span>创建时间</span>
+                                    <strong id="sessionCreateTime">-</strong>
+                                </div>
+                            </div>
+                            <button class="full-width-btn" id="refreshSessionBtn" type="button">刷新概要</button>
+                        </div>
+
+                        <div class="panel-block">
+                            <div class="block-heading">系统接口</div>
+                            <div class="endpoint-list" id="endpointList"></div>
+                        </div>
+
+                        <div class="panel-block">
+                            <div class="block-heading">运行状态</div>
+                            <div class="health-row">
+                                <span>Milvus</span>
+                                <strong id="milvusHealth">未检测</strong>
+                            </div>
+                            <button class="full-width-btn" id="checkMilvusBtn" type="button">检测 Milvus</button>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="page" id="historyPage">
+                <header class="page-header">
+                    <div>
+                        <p class="eyebrow">Memory System</p>
+                        <h1>记忆系统</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="secondary-btn active" id="longMemoryBtn" type="button">长期记忆</button>
+                        <button class="secondary-btn" id="shortMemoryBtn" type="button">短期记忆</button>
+                        <button class="secondary-btn" id="memoryMaintenanceBtn" type="button">自动抽取</button>
+                        <button class="secondary-btn" id="seedHistoryBtn" type="button">新建主题记忆</button>
+                        <button class="accent-btn" id="syncVisibleRowsBtn" type="button">刷新记忆文件</button>
+                    </div>
+                </header>
+
+                <section class="history-filters">
+                    <div class="field">
+                        <label for="historyKeyword">关键词</label>
+                        <input id="historyKeyword" type="search" placeholder="按路径过滤">
+                    </div>
+                    <div class="field">
+                        <label for="historyStatus">类型</label>
+                        <select id="historyStatus">
+                            <option value="all">全部</option>
+                            <option value="LONG_TERM_INDEX">长期索引</option>
+                            <option value="LONG_TERM_TOPIC">长期主题</option>
+                        </select>
+                    </div>
+                    <div class="field compact">
+                        <label for="pageSizeSelect">每页</label>
+                        <select id="pageSizeSelect">
+                            <option value="5">5</option>
+                            <option value="8" selected>8</option>
+                            <option value="12">12</option>
+                        </select>
+                    </div>
+                </section>
+
+                <div class="history-grid">
+                    <section class="history-table-panel">
+                        <div class="table-header">
+                            <span id="historyResultCount">0 条结果</span>
+                            <span id="historyPageInfo">第 1 页</span>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>类型</th>
+                                        <th>记忆</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <button class="secondary-btn" id="prevPageBtn" type="button">上一页</button>
+                            <div id="pageNumbers" class="page-numbers"></div>
+                            <button class="secondary-btn" id="nextPageBtn" type="button">下一页</button>
+                        </div>
+                    </section>
+
+                    <aside class="history-detail-panel">
+                        <div class="block-heading">记忆文件编辑</div>
+                        <div id="historyDetail" class="history-detail-empty">选择一个记忆文件查看详情。</div>
+
+                        <section class="missing-api-panel">
+                            <div class="block-heading">缺失接口清单</div>
+                            <div id="missingApiList" class="missing-api-list"></div>
+                        </section>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="page" id="ragPage">
+                <header class="page-header">
+                    <div>
+                        <p class="eyebrow">RAG Retrieval</p>
+                        <h1>RAG 知识库</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="accent-btn" id="ragUploadTriggerBtn" type="button">上传文档</button>
+                        <input id="ragFileInput" type="file" accept=".txt,.md,.markdown" multiple hidden>
+                    </div>
+                </header>
+
+                <div class="rag-layout">
+                    <section class="rag-library-panel">
+                        <div class="rag-upload-zone" id="ragUploadZone">
+                            <div class="upload-zone-title">拖拽或选择文档</div>
+                            <div class="upload-zone-copy">上传 TXT / Markdown 到后端知识库并建立向量索引。</div>
+                        </div>
+
+                        <div class="rag-library-header">
+                            <div>
+                                <div class="toolbar-title">知识库文档</div>
+                                <div class="toolbar-meta" id="ragLibraryMeta">0 个文档</div>
+                            </div>
+                            <input id="ragDocFilter" class="compact-search" type="search" placeholder="过滤文档">
+                        </div>
+
+                        <div class="rag-doc-list" id="ragDocList"></div>
+                    </section>
+
+                    <section class="rag-search-panel">
+                        <div class="rag-search-box">
+                            <label for="ragQueryInput">查询知识库</label>
+                            <div class="rag-query-row">
+                                <input id="ragQueryInput" type="search" placeholder="例如：磁盘使用率过高怎么排查">
+                                <button class="primary-btn" id="ragSearchBtn" type="button">查询</button>
+                            </div>
+                            <div class="rag-query-hints" id="ragQueryHints"></div>
+                        </div>
+
+                        <div class="rag-results-header">
+                            <div>
+                                <div class="toolbar-title">召回结果</div>
+                                <div class="toolbar-meta" id="ragResultMeta">等待查询</div>
+                            </div>
+                            <select id="ragTopKSelect">
+                                <option value="3">Top 3</option>
+                                <option value="5" selected>Top 5</option>
+                                <option value="8">Top 8</option>
+                            </select>
+                        </div>
+
+                        <div class="rag-result-list" id="ragResultList">
+                            <div class="empty-state compact">
+                                <div class="empty-title">输入文本查看召回结果</div>
+                                <div class="empty-copy">结果来自后端知识库召回，按 L2 distance 排名。</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+    <script src="app.js"></script>
+</body>
+</html>
