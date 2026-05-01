@@ -39,12 +39,6 @@ class SuperBizConsole {
             { method: 'GET', path: '/milvus/health', purpose: '检测向量库健康状态' }
         ];
 
-        this.missingApis = [
-            { name: '记忆自动抽取', suggestion: 'POST /api/memory/extract，从 Agent 结果中抽取长期主题记忆' },
-            { name: '记忆版本管理', suggestion: 'GET /api/memory/files/versions?path=MEMORY.md' },
-            { name: '短期记忆自动压缩', suggestion: '按 session 周期性把多条 execution 归并为摘要记忆' }
-        ];
-
         this.bindElements();
         this.bindEvents();
         this.renderAll();
@@ -86,10 +80,8 @@ class SuperBizConsole {
         this.historyDetail = document.getElementById('historyDetail');
         this.longMemoryBtn = document.getElementById('longMemoryBtn');
         this.shortMemoryBtn = document.getElementById('shortMemoryBtn');
-        this.memoryMaintenanceBtn = document.getElementById('memoryMaintenanceBtn');
         this.seedHistoryBtn = document.getElementById('seedHistoryBtn');
         this.syncVisibleRowsBtn = document.getElementById('syncVisibleRowsBtn');
-        this.missingApiList = document.getElementById('missingApiList');
         this.ragUploadTriggerBtn = document.getElementById('ragUploadTriggerBtn');
         this.ragFileInput = document.getElementById('ragFileInput');
         this.ragUploadZone = document.getElementById('ragUploadZone');
@@ -148,7 +140,6 @@ class SuperBizConsole {
         this.nextPageBtn.addEventListener('click', () => this.movePage(1));
         this.longMemoryBtn.addEventListener('click', () => this.switchMemoryView('long'));
         this.shortMemoryBtn.addEventListener('click', () => this.switchMemoryView('short'));
-        this.memoryMaintenanceBtn.addEventListener('click', () => this.runMemoryMaintenance());
         this.seedHistoryBtn.addEventListener('click', () => this.seedStaticHistory());
         this.syncVisibleRowsBtn.addEventListener('click', () => this.syncVisibleHistorySummaries());
 
@@ -178,7 +169,6 @@ class SuperBizConsole {
 
     renderAll() {
         this.renderEndpoints();
-        this.renderMissingApis();
         this.renderMessages();
         this.configureMemoryStatusOptions();
         this.refreshMemoryFiles();
@@ -224,15 +214,6 @@ class SuperBizConsole {
             <div class="endpoint-pill">
                 <strong>${endpoint.method} ${endpoint.path}</strong>
                 <span>${endpoint.purpose}</span>
-            </div>
-        `).join('');
-    }
-
-    renderMissingApis() {
-        this.missingApiList.innerHTML = this.missingApis.map(api => `
-            <div class="missing-api-item">
-                <strong>${api.name}</strong>
-                <span>${api.suggestion}</span>
             </div>
         `).join('');
     }
@@ -364,7 +345,6 @@ class SuperBizConsole {
             this.sessionPairCount.textContent = payload.data.messagePairCount;
             this.sessionCreateTime.textContent = this.formatDate(payload.data.createTime);
             if (showToast) this.showToast('后端会话概要已刷新');
-            this.mergeHistorySummary(this.sessionId, payload.data);
         } catch (error) {
             this.sessionPairCount.textContent = '-';
             this.sessionCreateTime.textContent = '-';
@@ -486,18 +466,6 @@ class SuperBizConsole {
 
     captureCurrentSessionToHistory() {
         // 短期记忆由后端异步写入 MySQL agent_execution_memory。
-    }
-
-    loadHistoryRows() {
-        return [];
-    }
-
-    saveHistoryRows() {
-        return undefined;
-    }
-
-    createStaticHistoryRows() {
-        return [];
     }
 
     async seedStaticHistory() {
@@ -664,7 +632,6 @@ class SuperBizConsole {
         this.shortMemoryBtn.classList.toggle('active', view === 'short');
         this.seedHistoryBtn.textContent = view === 'long' ? '新建主题记忆' : '新建短期记忆';
         this.syncVisibleRowsBtn.textContent = view === 'long' ? '刷新记忆文件' : '刷新短期记忆';
-        this.memoryMaintenanceBtn.textContent = view === 'long' ? '自动抽取' : '压缩旧记录';
         this.historyKeyword.placeholder = view === 'long' ? '按路径过滤' : '按 executionId、sessionId、内容过滤';
         this.configureMemoryStatusOptions();
         this.refreshMemoryFiles();
@@ -681,55 +648,12 @@ class SuperBizConsole {
                 ['all', '全部'],
                 ['SUCCESS', '成功'],
                 ['FAILED', '失败'],
-                ['MANUAL', '手动']
+                ['MANUAL', '手动'],
+                ['COMPRESSED', '压缩记录']
             ];
         this.historyStatus.innerHTML = options
             .map(([value, label]) => `<option value="${value}">${label}</option>`)
             .join('');
-    }
-
-    mergeHistorySummary(sessionId, data) {
-        return undefined;
-    }
-
-    async runMemoryMaintenance() {
-        if (this.memoryView === 'long') {
-            await this.extractLongTermMemory();
-        } else {
-            await this.compressShortTermMemory();
-        }
-    }
-
-    async extractLongTermMemory() {
-        const payload = await this.fetchJson(`${this.apiBaseUrl}/memory/extract`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ limit: 10 })
-        });
-        if (payload.code !== 200) {
-            this.showToast(payload.message || '自动抽取失败');
-            return;
-        }
-        this.selectedHistoryId = payload.data.targetPath;
-        await this.refreshMemoryFiles(false);
-        await this.selectHistoryRow(payload.data.targetPath);
-        this.showToast(`已抽取 ${payload.data.extractedCount} 条长期记忆`);
-    }
-
-    async compressShortTermMemory() {
-        const payload = await this.fetchJson(`${this.apiBaseUrl}/memory/compress`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ keepRecent: 6, maxRecords: 30 })
-        });
-        if (payload.code !== 200) {
-            this.showToast(payload.message || '压缩失败');
-            return;
-        }
-        this.selectedHistoryId = payload.data.summaryExecutionId;
-        await this.refreshMemoryFiles(false);
-        await this.selectHistoryRow(payload.data.summaryExecutionId);
-        this.showToast(`已压缩 ${payload.data.compressedCount} 条短期记忆`);
     }
 
     async refreshMemoryFiles(showError = true) {
@@ -797,8 +721,9 @@ class SuperBizConsole {
 
     renderShortMemoryDetail(row) {
         this.historyDetail.innerHTML = `
-            <div class="detail-title">${this.escapeHtml(row.executionId)}</div>
+            <div class="detail-title">${this.escapeHtml(this.shortMemoryTitle(row))}</div>
             <div class="detail-meta">
+                <span><strong>执行 ID</strong>${this.escapeHtml(row.executionId || '-')}</span>
                 <span><strong>Session</strong>${this.escapeHtml(row.sessionId || '-')}</span>
                 <span><strong>状态</strong>${this.escapeHtml(row.status || '-')}</span>
                 <span><strong>耗时</strong>${row.durationMs ?? 0} ms</span>
@@ -901,7 +826,7 @@ class SuperBizConsole {
     }
 
     memoryRowTitle(row) {
-        return this.memoryView === 'long' ? row.path : row.executionId;
+        return this.memoryView === 'long' ? row.path : this.shortMemoryTitle(row);
     }
 
     memoryRowSubtitle(row) {
@@ -913,6 +838,14 @@ class SuperBizConsole {
 
     memoryRowType(row) {
         return this.memoryView === 'long' ? row.type : (row.status || 'UNKNOWN');
+    }
+
+    shortMemoryTitle(row) {
+        const input = (row.userInput || '').trim().replace(/\s+/g, ' ');
+        if (!input) {
+            return row.executionId || '未命名短期记忆';
+        }
+        return input.length > 60 ? `${input.slice(0, 60)}...` : input;
     }
 
     async handleRagFiles(fileList) {

@@ -17,6 +17,9 @@ import org.example.mapper.AgentExecutionMemoryMapper;
 import org.example.service.ChatService;
 import org.example.service.MemoryMaintenanceService;
 import org.example.service.MemoryService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -29,18 +32,22 @@ import java.util.stream.Collectors;
 @Service
 public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceService {
 
+    private static final Logger logger = LoggerFactory.getLogger(RuleBasedMemoryMaintenanceService.class);
     private static final String DEFAULT_TARGET_PATH = "topics/agent-insights.md";
 
     private final AgentExecutionMemoryMapper memoryMapper;
     private final MemoryService memoryService;
     private final ChatService chatService;
+    private final boolean extractBeforeCompression;
 
     public RuleBasedMemoryMaintenanceService(AgentExecutionMemoryMapper memoryMapper,
                                              MemoryService memoryService,
-                                             ChatService chatService) {
+                                             ChatService chatService,
+                                             @Value("${memory.long-extraction.before-compression:true}") boolean extractBeforeCompression) {
         this.memoryMapper = memoryMapper;
         this.memoryService = memoryService;
         this.chatService = chatService;
+        this.extractBeforeCompression = extractBeforeCompression;
     }
 
     @Override
@@ -52,7 +59,18 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
             throw new IllegalArgumentException("没有可抽取的成功执行记录");
         }
 
+        return extractRecordsToLongTerm(records);
+    }
+
+    private MemoryExtractResponse extractRecordsToLongTerm(List<AgentExecutionMemory> records) {
         LongTermExtraction extraction = extractWithModel(records);
+        if (!extraction.hasMemory() || !StringUtils.hasText(extraction.content())) {
+            MemoryExtractResponse response = new MemoryExtractResponse();
+            response.setTargetPath("");
+            response.setExtractedCount(0);
+            response.setContent("");
+            return response;
+        }
         String targetPath = normalizeTopicPath(extraction.targetPath());
         String extracted = extraction.content();
         String existing = safeReadContent(targetPath);
@@ -93,6 +111,7 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
 
         List<AgentExecutionMemory> toCompress = records.subList(keepRecent, records.size());
         Collections.reverse(toCompress);
+        extractBeforeCompression(toCompress, resolvedRequest.getSessionId());
         String summary = compressWithModel(toCompress);
 
         AgentExecutionMemory compressed = new AgentExecutionMemory();
@@ -118,6 +137,30 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
         response.setCompressedCount(toCompress.size());
         response.setSummary(summary);
         return response;
+    }
+
+    private void extractBeforeCompression(List<AgentExecutionMemory> toCompress, String sessionId) {
+        if (!extractBeforeCompression || toCompress == null || toCompress.isEmpty()) {
+            return;
+        }
+        List<AgentExecutionMemory> successRecords = toCompress.stream()
+                .filter(record -> "SUCCESS".equals(record.getStatus()))
+                .toList();
+        if (successRecords.isEmpty()) {
+            return;
+        }
+        try {
+            MemoryExtractResponse response = extractRecordsToLongTerm(successRecords);
+            logger.info("压缩前长期记忆抽取完成, sessionId: {}, extractedCount: {}, targetPath: {}",
+                    StringUtils.hasText(sessionId) ? sessionId : "GLOBAL",
+                    response.getExtractedCount(),
+                    response.getTargetPath());
+        } catch (Exception e) {
+            logger.warn("压缩前长期记忆抽取失败, sessionId: {}, reason: {}",
+                    StringUtils.hasText(sessionId) ? sessionId : "GLOBAL",
+                    e.getMessage(),
+                    e);
+        }
     }
 
     private List<AgentExecutionMemory> findRecords(String executionId, String sessionId, String status, int limit) {
@@ -146,6 +189,7 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
                 输出必须是严格 JSON，不要输出 Markdown 代码块，不要输出额外解释。
                 JSON schema:
                 {
+                  "hasMemory": true,
                   "targetPath": "topics/kebab-case-topic.md",
                   "description": "一句话说明这个 topic 保存什么",
                   "keywords": "逗号分隔关键词",
@@ -153,6 +197,11 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
                 }
 
                 规则:
+                - 如果没有值得长期保存的信息，输出 {"hasMemory": false, "targetPath": "", "description": "", "keywords": "", "content": ""}。
+                - 你必须先判断本轮或这批记录是否包含长期价值，再决定 hasMemory。
+                - 用户明确表达长期偏好、约束、习惯、禁忌或未来工作方式时，通常应保存。
+                - 项目启动方式、环境要求、接口约定、架构决策、排障结论、已确认的实现方案通常应保存。
+                - 临时问答、寒暄、一次性报错、重复流水、未确认猜测、敏感凭据或大段日志原文不要保存。
                 - targetPath 必须在 topics/ 下，文件名使用英文小写 kebab-case，以 .md 结尾。
                 - content 使用 Markdown，包含二级标题和要点列表。
                 - 只保留可复用事实、架构决策、接口约定、排障结论、项目偏好。
@@ -165,6 +214,7 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
         String raw = callMemoryModel("你是一个负责维护长期记忆文件的工程助手，只输出严格 JSON。", prompt, 0.2, 3000);
         JsonObject json = parseJsonObject(raw);
         return new LongTermExtraction(
+                !json.has("hasMemory") || json.get("hasMemory").getAsBoolean(),
                 json.has("targetPath") ? json.get("targetPath").getAsString() : DEFAULT_TARGET_PATH,
                 json.has("description") ? json.get("description").getAsString() : "Automatically extracted long-term memory.",
                 json.has("keywords") ? json.get("keywords").getAsString() : "agent,memory,execution",
@@ -284,6 +334,6 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
         return value == null ? "" : value;
     }
 
-    private record LongTermExtraction(String targetPath, String description, String keywords, String content) {
+    private record LongTermExtraction(boolean hasMemory, String targetPath, String description, String keywords, String content) {
     }
 }

@@ -75,6 +75,15 @@ memory:
   base-path: ./memory
   max-index-lines: 200
   short-memory-pairs: 6
+  short-compression:
+    enabled: true
+    threshold: 12
+    keep-recent: 6
+    max-records: 30
+  long-extraction:
+    enabled: true
+    success-threshold: 5
+    before-compression: true
 
 # Prometheus 配置
 prometheus:

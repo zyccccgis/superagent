@@ -4,12 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.example.dto.AgentExecutionMemoryListResponse;
 import org.example.dto.AgentExecutionMemoryRequest;
 import org.example.dto.AgentExecutionMemoryResponse;
+import org.example.dto.MemoryCompressRequest;
 import org.example.dto.MemoryContext;
+import org.example.dto.MemoryExtractRequest;
 import org.example.entity.AgentExecutionMemory;
 import org.example.mapper.AgentExecutionMemoryMapper;
 import org.example.service.AgentExecutionMemoryService;
+import org.example.service.MemoryMaintenanceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.stereotype.Service;
 
@@ -28,11 +33,33 @@ public class MySqlAgentExecutionMemoryService implements AgentExecutionMemorySer
 
     private final AgentExecutionMemoryMapper memoryMapper;
     private final AsyncTaskExecutor chatTaskExecutor;
+    private final MemoryMaintenanceService memoryMaintenanceService;
+    private final boolean autoCompressionEnabled;
+    private final int autoCompressionThreshold;
+    private final int autoCompressionKeepRecent;
+    private final int autoCompressionMaxRecords;
+    private final boolean autoExtractionEnabled;
+    private final int autoExtractionSuccessThreshold;
 
     public MySqlAgentExecutionMemoryService(AgentExecutionMemoryMapper memoryMapper,
-                                            AsyncTaskExecutor chatTaskExecutor) {
+                                            AsyncTaskExecutor chatTaskExecutor,
+                                            @Lazy
+                                            MemoryMaintenanceService memoryMaintenanceService,
+                                            @Value("${memory.short-compression.enabled:true}") boolean autoCompressionEnabled,
+                                            @Value("${memory.short-compression.threshold:12}") int autoCompressionThreshold,
+                                            @Value("${memory.short-compression.keep-recent:6}") int autoCompressionKeepRecent,
+                                            @Value("${memory.short-compression.max-records:30}") int autoCompressionMaxRecords,
+                                            @Value("${memory.long-extraction.enabled:true}") boolean autoExtractionEnabled,
+                                            @Value("${memory.long-extraction.success-threshold:5}") int autoExtractionSuccessThreshold) {
         this.memoryMapper = memoryMapper;
         this.chatTaskExecutor = chatTaskExecutor;
+        this.memoryMaintenanceService = memoryMaintenanceService;
+        this.autoCompressionEnabled = autoCompressionEnabled;
+        this.autoCompressionThreshold = Math.max(2, autoCompressionThreshold);
+        this.autoCompressionKeepRecent = Math.max(1, Math.min(autoCompressionKeepRecent, this.autoCompressionThreshold - 1));
+        this.autoCompressionMaxRecords = Math.max(2, autoCompressionMaxRecords);
+        this.autoExtractionEnabled = autoExtractionEnabled;
+        this.autoExtractionSuccessThreshold = Math.max(1, autoExtractionSuccessThreshold);
     }
 
     @Override
@@ -77,8 +104,72 @@ public class MySqlAgentExecutionMemoryService implements AgentExecutionMemorySer
                 memory.setMemoryIndexSnapshot(nullToEmpty(memory.getMemoryIndexSnapshot()) + "\n\n--- Loaded Topics ---\n" + topicSnapshot);
             }
             memoryMapper.insert(memory);
+            extractLongTermMemoryIfNeeded(memory);
+            compressOldMemoriesIfNeeded(sessionId);
         } catch (Exception e) {
             logger.warn("异步记录 Agent 执行记忆失败: {}", e.getMessage(), e);
+        }
+    }
+
+    private void extractLongTermMemoryIfNeeded(AgentExecutionMemory memory) {
+        if (!autoExtractionEnabled || memory == null || !"SUCCESS".equals(memory.getStatus())) {
+            return;
+        }
+        boolean thresholdReached = isSuccessThresholdReached(memory.getSessionId());
+        try {
+            MemoryExtractRequest request = new MemoryExtractRequest();
+            request.setSessionId(memory.getSessionId());
+            if (thresholdReached) {
+                request.setLimit(autoExtractionSuccessThreshold);
+            } else {
+                request.setExecutionId(memory.getExecutionId());
+                request.setLimit(1);
+            }
+            var response = memoryMaintenanceService.extractLongTermMemory(request);
+            logger.info("长期记忆自动抽取完成, sessionId: {}, executionId: {}, trigger: {}, extractedCount: {}, targetPath: {}",
+                    memory.getSessionId(),
+                    memory.getExecutionId(),
+                    thresholdReached ? "threshold" : "single-turn",
+                    response.getExtractedCount(),
+                    response.getTargetPath());
+        } catch (Exception e) {
+            logger.warn("长期记忆自动抽取失败, sessionId: {}, executionId: {}, reason: {}",
+                    memory.getSessionId(), memory.getExecutionId(), e.getMessage(), e);
+        }
+    }
+
+    private boolean isSuccessThresholdReached(String sessionId) {
+        if (!hasText(sessionId)) {
+            return false;
+        }
+        Long successCount = memoryMapper.selectCount(new LambdaQueryWrapper<AgentExecutionMemory>()
+                .eq(AgentExecutionMemory::getSessionId, sessionId)
+                .eq(AgentExecutionMemory::getStatus, "SUCCESS"));
+        long count = successCount == null ? 0 : successCount;
+        return count > 0 && count % autoExtractionSuccessThreshold == 0;
+    }
+
+    private void compressOldMemoriesIfNeeded(String sessionId) {
+        if (!autoCompressionEnabled || !hasText(sessionId)) {
+            return;
+        }
+        Long activeCount = memoryMapper.selectCount(new LambdaQueryWrapper<AgentExecutionMemory>()
+                .eq(AgentExecutionMemory::getSessionId, sessionId)
+                .ne(AgentExecutionMemory::getStatus, "COMPRESSED"));
+        long count = activeCount == null ? 0 : activeCount;
+        if (count <= autoCompressionThreshold) {
+            return;
+        }
+        try {
+            MemoryCompressRequest request = new MemoryCompressRequest();
+            request.setSessionId(sessionId);
+            request.setKeepRecent(autoCompressionKeepRecent);
+            request.setMaxRecords(Math.min(autoCompressionMaxRecords, (int) count));
+            memoryMaintenanceService.compressShortTermMemory(request);
+            logger.info("短期记忆已自动压缩, sessionId: {}, activeCount: {}, threshold: {}",
+                    sessionId, count, autoCompressionThreshold);
+        } catch (Exception e) {
+            logger.warn("短期记忆自动压缩失败, sessionId: {}, reason: {}", sessionId, e.getMessage(), e);
         }
     }
 

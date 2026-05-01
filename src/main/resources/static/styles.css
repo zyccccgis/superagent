@@ -252,7 +252,6 @@ h1 {
 .insight-panel,
 .history-table-panel,
 .history-detail-panel,
-.missing-api-panel,
 .history-filters,
 .rag-library-panel,
 .rag-search-panel {
@@ -475,16 +474,10 @@ h1 {
     text-align: right;
 }
 
-.endpoint-list,
-.missing-api-list {
+.endpoint-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
-}
-
-.missing-api-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .endpoint-list {
@@ -493,8 +486,7 @@ h1 {
     padding-right: 2px;
 }
 
-.endpoint-pill,
-.missing-api-item {
+.endpoint-pill {
     padding: 8px 10px;
     border-radius: 8px;
     border: 1px solid #e5eaf0;
@@ -503,8 +495,7 @@ h1 {
     line-height: 1.35;
 }
 
-.endpoint-pill strong,
-.missing-api-item strong {
+.endpoint-pill strong {
     display: block;
     font-size: 12px;
     color: #17212b;
@@ -766,14 +757,6 @@ h1 {
     border: 1px solid #e5eaf0;
     line-height: 1.6;
     font-size: 13px;
-}
-
-.missing-api-panel {
-    padding: 12px;
-    flex-shrink: 0;
-    box-shadow: none;
-    max-height: 220px;
-    overflow: auto;
 }
 
 #ragPage {
@@ -1066,8 +1049,7 @@ h1 {
         overflow: visible;
     }
 
-    .history-detail-empty,
-    .missing-api-panel {
+    .history-detail-empty {
         max-height: none;
         overflow: visible;
     }
