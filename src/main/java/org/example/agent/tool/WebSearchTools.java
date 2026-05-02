@@ -33,6 +33,14 @@ import java.util.Map;
  */
 @Component
 @ConditionalOnProperty(prefix = "web.tool", name = "enabled", havingValue = "true")
+@ManagedTool(
+        name = "web_fetch",
+        displayName = "网页查询",
+        description = "访问公开网页或公开 HTTP API",
+        riskLevel = "MEDIUM",
+        instruction = "当用户需要访问公开网页或公开 HTTP API 时使用。禁止尝试访问 localhost、本机服务或内网地址。",
+        order = 60
+)
 public class WebSearchTools {
 
     private static final Logger logger = LoggerFactory.getLogger(WebSearchTools.class);

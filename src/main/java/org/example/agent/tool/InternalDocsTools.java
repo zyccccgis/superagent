@@ -17,6 +17,14 @@ import java.util.List;
  * 使用 RAG (Retrieval-Augmented Generation) 从内部知识库检索相关文档
  */
 @Component
+@ManagedTool(
+        name = "internal_docs",
+        displayName = "内部文档检索",
+        description = "通过 RAG 查询内部知识库",
+        riskLevel = "LOW",
+        instruction = "当用户需要查询公司内部文档、流程、最佳实践或技术指南时使用。",
+        order = 20
+)
 public class InternalDocsTools {
     
     private static final Logger logger = LoggerFactory.getLogger(InternalDocsTools.class);

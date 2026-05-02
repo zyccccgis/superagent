@@ -55,3 +55,8 @@ memory/sessions/
 ### docker
 /volumes
 /server.pid
+/skills/installed/claude-api/
+/skills/installed/frontend-design/
+/skills/installed/mcp-builder/
+/skills/installed/skill-creator/
+/skills/installed/webapp-testing/

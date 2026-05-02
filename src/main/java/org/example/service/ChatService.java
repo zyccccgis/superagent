@@ -10,20 +10,13 @@ import com.alibaba.cloud.ai.graph.agent.hook.toolcalllimit.ToolCallLimitHook;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import org.example.dto.MemoryContext;
 import org.example.dto.MemoryFileResponse;
-import org.example.agent.tool.DateTimeTools;
-import org.example.agent.tool.InternalDocsTools;
-import org.example.agent.tool.MySqlTools;
-import org.example.agent.tool.QueryLogsTools;
-import org.example.agent.tool.QueryMetricsTools;
-import org.example.agent.tool.WebSearchTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.ToolCallback;
-import org.springframework.ai.tool.ToolCallbackProvider;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,27 +28,6 @@ public class ChatService {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
-    @Autowired
-    private InternalDocsTools internalDocsTools;
-
-    @Autowired
-    private DateTimeTools dateTimeTools;
-
-    @Autowired
-    private QueryMetricsTools queryMetricsTools;
-
-    @Autowired(required = false)
-    private MySqlTools mySqlTools;
-
-    @Autowired(required = false)
-    private WebSearchTools webSearchTools;
-
-    @Autowired(required = false)  // Mock 模式下才注册，所以设置为 optional,真实环境通过mcp配置注入
-    private QueryLogsTools queryLogsTools;
-
-    @Autowired(required = false)
-    private ToolCallbackProvider tools;
-
     @Value("${spring.ai.dashscope.api-key}")
     private String dashScopeApiKey;
 
@@ -64,6 +36,14 @@ public class ChatService {
 
     @Value("${agent.safety.tool-call-limit:12}")
     private int toolCallLimit;
+
+    private final ToolSystemService toolSystemService;
+    private final SkillService skillService;
+
+    public ChatService(ToolSystemService toolSystemService, SkillService skillService) {
+        this.toolSystemService = toolSystemService;
+        this.skillService = skillService;
+    }
 
     /**
      * 创建 DashScope API 实例
@@ -105,18 +85,11 @@ public class ChatService {
     public String buildSystemPrompt(MemoryContext memoryContext) {
         StringBuilder systemPromptBuilder = new StringBuilder();
         
-        // 基础系统提示
-        systemPromptBuilder.append("你是一个专业的智能助手，可以获取当前时间、查询天气信息、搜索内部文档知识库，以及查询 Prometheus 告警信息。\n");
-        systemPromptBuilder.append("当用户询问时间相关问题时，使用 getCurrentDateTime 工具。\n");
-        systemPromptBuilder.append("当用户需要查询公司内部文档、流程、最佳实践或技术指南时，使用 queryInternalDocs 工具。\n");
-        systemPromptBuilder.append("当用户需要查询 Prometheus 告警、监控指标或系统告警状态时，使用 queryPrometheusAlerts 工具。\n");
-        if (mySqlTools != null) {
-            systemPromptBuilder.append("当用户需要查询或修改 MySQL 业务数据时，优先使用 MySQL 工具。查询用 executeMySqlQuery，写入用 executeMySqlUpdate。禁止执行高危 DDL。\n");
+        systemPromptBuilder.append(toolSystemService.buildToolInstructions());
+        String skillsPrompt = skillService.buildSkillIndexPrompt();
+        if (hasText(skillsPrompt)) {
+            systemPromptBuilder.append(skillsPrompt);
         }
-        if (webSearchTools != null) {
-            systemPromptBuilder.append("当用户需要访问公开网页或公开 HTTP API 时，使用 fetchWebPage 工具。禁止尝试访问 localhost、本机服务或内网地址。\n");
-        }
-        systemPromptBuilder.append("当用户需要查询腾讯云日志时，请调用腾讯云mcp服务查询,默认查询地域ap-guangzhou,查询时间范围为近一个月。\n\n");
         
         if (memoryContext != null) {
             if (hasText(memoryContext.getMemoryIndex())) {
@@ -149,46 +122,10 @@ public class ChatService {
     }
 
     /**
-     * 动态构建方法工具数组
-     * 根据 cls.mock-enabled 决定是否包含 QueryLogsTools
-     */
-    public Object[] buildMethodToolsArray() {
-        List<Object> methodTools = new java.util.ArrayList<>();
-        methodTools.add(dateTimeTools);
-        methodTools.add(internalDocsTools);
-        methodTools.add(queryMetricsTools);
-        if (mySqlTools != null) {
-            methodTools.add(mySqlTools);
-        }
-        if (webSearchTools != null) {
-            methodTools.add(webSearchTools);
-        }
-        if (queryLogsTools != null) {
-            methodTools.add(queryLogsTools);
-        }
-        return methodTools.toArray();
-    }
-
-    /**
-     * 获取工具回调列表，mcp服务提供的工具
-     */
-    public ToolCallback[] getToolCallbacks() {
-        return tools == null ? new ToolCallback[0] : tools.getToolCallbacks();
-    }
-
-    /**
      * 记录可用工具列表：mcp服务提供的工具
      */
     public void logAvailableTools() {
-        ToolCallback[] toolCallbacks = getToolCallbacks();
-        if (toolCallbacks.length == 0) {
-            logger.info("可用工具列表: 当前未接入 MCP 工具");
-            return;
-        }
-        logger.info("可用工具列表:");
-        for (ToolCallback toolCallback : toolCallbacks) {
-            logger.info(">>> {}", toolCallback.getToolDefinition().name());
-        }
+        toolSystemService.logAvailableTools();
     }
 
     /**
@@ -202,10 +139,17 @@ public class ChatService {
                 .name("intelligent_assistant")
                 .model(chatModel)
                 .systemPrompt(systemPrompt)
-                .methodTools(buildMethodToolsArray())
-                .tools(getToolCallbacks())
+                .methodTools(toolSystemService.buildLocalToolObjects())
+                .tools(buildToolCallbacks())
                 .hooks(createSafetyHooks())
                 .build();
+    }
+
+    private ToolCallback[] buildToolCallbacks() {
+        List<ToolCallback> callbacks = new ArrayList<>();
+        callbacks.addAll(List.of(toolSystemService.getMcpToolCallbacks()));
+        callbacks.addAll(List.of(skillService.buildSkillToolCallbacks()));
+        return callbacks.toArray(ToolCallback[]::new);
     }
 
     private List<Hook> createSafetyHooks() {

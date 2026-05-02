@@ -223,6 +223,17 @@ h1 {
     border-color: #cbd5e1;
 }
 
+.compact-btn {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+}
+
+.secondary-btn.danger {
+    color: #991b1b;
+    border-color: #fecaca;
+}
+
 .secondary-btn:hover,
 .full-width-btn:hover,
 .icon-btn:hover {
@@ -254,7 +265,9 @@ h1 {
 .history-detail-panel,
 .history-filters,
 .rag-library-panel,
-.rag-search-panel {
+.rag-search-panel,
+.tools-list-panel,
+.tools-detail-panel {
     background: #ffffff;
     border: 1px solid #d8e0ea;
     border-radius: 8px;
@@ -673,16 +686,20 @@ h1 {
     flex: 1;
     min-height: 0;
     overflow: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .memory-editor {
     width: 100%;
-    min-height: 520px;
-    resize: vertical;
+    box-sizing: border-box;
+    min-height: 0;
+    resize: none;
     border: 1px solid #dbe3eb;
     border-radius: 8px;
     padding: 12px;
     font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    overflow: auto;
 }
 
 .memory-editor.compact {
@@ -710,6 +727,7 @@ h1 {
     justify-content: flex-end;
     gap: 10px;
     margin-top: 12px;
+    flex-shrink: 0;
 }
 
 .detail-title {
@@ -746,8 +764,68 @@ h1 {
 .detail-preview {
     border-top: 1px solid #e5eaf0;
     padding-top: 10px;
-    display: grid;
+    display: flex;
+    flex: 1 1 420px;
+    min-height: 0;
+    overflow: hidden;
+    flex-direction: column;
     gap: 8px;
+}
+
+.detail-preview .memory-editor {
+    flex: 1;
+}
+
+.short-memory-detail {
+    flex: 1 1 0;
+}
+
+.short-memory-detail .memory-editor {
+    flex: none;
+}
+
+.short-memory-fields {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    flex: 1;
+    min-height: 0;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.short-memory-field {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.short-memory-field .memory-label {
+    margin-top: 0;
+}
+
+.short-memory-field.output-field {
+    min-height: 0;
+}
+
+.short-memory-field.user-field .memory-editor {
+    flex: none;
+    height: 82px;
+    min-height: 82px;
+    max-height: 82px;
+}
+
+.short-memory-field.output-field .memory-editor {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+}
+
+.short-memory-field.status-field {
+    min-height: auto;
+}
+
+.short-memory-field.status-field .memory-input {
+    max-width: 240px;
 }
 
 .preview-message {
@@ -763,6 +841,11 @@ h1 {
     overflow: hidden;
 }
 
+#toolsPage,
+#skillsPage {
+    overflow: hidden;
+}
+
 .rag-layout {
     display: grid;
     grid-template-columns: 380px minmax(0, 1fr);
@@ -772,12 +855,428 @@ h1 {
     overflow: hidden;
 }
 
+.tools-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.tools-tab-page {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.tools-tab-page.active {
+    display: flex;
+}
+
+.mcp-layout {
+    display: grid;
+    grid-template-columns: minmax(420px, 520px) minmax(0, 1fr);
+    gap: 20px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.skills-layout {
+    display: grid;
+    grid-template-columns: minmax(420px, 520px) minmax(0, 1fr);
+    gap: 20px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .rag-library-panel,
-.rag-search-panel {
+.rag-search-panel,
+.tools-list-panel,
+.tools-detail-panel,
+.mcp-tools-panel,
+.skills-list-panel,
+.skill-detail-panel {
     min-height: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+}
+
+.tools-list-panel.full {
+    flex: 1;
+}
+
+.tools-list {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #fbfcfe;
+}
+
+.skill-install-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    padding: 14px;
+    border-bottom: 1px solid #e5eaf0;
+}
+
+.skill-install-form input[type="url"] {
+    height: 38px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0 10px;
+    min-width: 0;
+}
+
+.inline-check {
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.skills-list {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #fbfcfe;
+}
+
+.skill-card {
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 14px;
+    cursor: pointer;
+}
+
+.skill-card:hover,
+.skill-card.active {
+    border-color: #0f766e;
+    background: #f0fdfa;
+}
+
+.skill-content {
+    flex: 1;
+    min-height: 0;
+}
+
+.tool-card {
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+}
+
+.tool-card.enabled {
+    border-color: #99f6e4;
+    background: #f0fdfa;
+}
+
+.tool-card.unavailable {
+    opacity: 0.62;
+}
+
+.tool-card-main {
+    min-width: 0;
+}
+
+.tool-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.tool-name {
+    font-size: 15px;
+    font-weight: 850;
+    color: #17212b;
+}
+
+.tool-code {
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.tool-description {
+    color: #334155;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.tool-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.tool-meta-row span {
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #eef2f6;
+}
+
+.risk-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+    flex-shrink: 0;
+}
+
+.risk-badge.low {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.risk-badge.medium {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.risk-badge.high {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.tool-switch {
+    position: relative;
+    width: 54px;
+    height: 30px;
+    flex-shrink: 0;
+}
+
+.tool-switch input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+}
+
+.tool-switch span {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: #cbd5e1;
+    transition: background 0.2s;
+}
+
+.tool-switch span::before {
+    content: "";
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    left: 3px;
+    top: 3px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.22);
+    transition: transform 0.2s;
+}
+
+.tool-switch input:checked + span {
+    background: #0f766e;
+}
+
+.tool-switch input:checked + span::before {
+    transform: translateX(24px);
+}
+
+.tool-switch input:disabled + span {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.tools-detail-panel,
+.mcp-tools-panel,
+.skill-detail-panel {
+    padding: 16px;
+}
+
+.mcp-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.mcp-form {
+    display: grid;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5eaf0;
+}
+
+.mcp-form input,
+.mcp-form select,
+.mcp-form textarea {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    min-width: 0;
+}
+
+.mcp-form input,
+.mcp-form select {
+    height: 38px;
+    padding: 0 10px;
+}
+
+.mcp-form textarea {
+    min-height: 84px;
+    resize: vertical;
+    padding: 10px;
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.mcp-server-list,
+.mcp-tool-list,
+.tool-boundary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mcp-server-list {
+    margin-top: 12px;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 2px;
+}
+
+.mcp-tool-list {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 2px;
+}
+
+.tool-boundary-item,
+.mcp-server-card,
+.mcp-tool-card {
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #fbfcfe;
+    padding: 12px;
+}
+
+.mcp-server-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.mcp-status {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.mcp-status.connected {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.mcp-status.failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.mcp-status.disabled {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.mcp-error {
+    margin-top: 8px;
+    color: #991b1b;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.mcp-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.mcp-tool-card strong {
+    display: block;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.mcp-tool-card span {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.mcp-tool-card p {
+    margin: 6px 0 0;
+    color: #334155;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.tool-boundary-item strong {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.tool-boundary-item span {
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.65;
 }
 
 .rag-upload-zone {
@@ -982,14 +1481,22 @@ h1 {
 
     .chat-layout,
     .history-grid,
-    .rag-layout {
+    .rag-layout,
+    .tools-layout,
+    .mcp-layout,
+    .skills-layout {
         grid-template-columns: 1fr;
         overflow: visible;
     }
 
     .insight-panel,
     .rag-library-panel,
-    .rag-search-panel {
+    .rag-search-panel,
+    .tools-list-panel,
+    .tools-detail-panel,
+    .mcp-tools-panel,
+    .skills-list-panel,
+    .skill-detail-panel {
         overflow: visible;
     }
 
@@ -1035,7 +1542,9 @@ h1 {
     }
 
     #historyPage,
-    #ragPage {
+    #ragPage,
+    #toolsPage,
+    #skillsPage {
         overflow: visible;
     }
 
@@ -1044,7 +1553,16 @@ h1 {
     .history-detail-panel,
     .rag-layout,
     .rag-library-panel,
-    .rag-search-panel {
+    .rag-search-panel,
+    .tools-layout,
+    .tools-tab-page,
+    .mcp-layout,
+    .skills-layout,
+    .tools-list-panel,
+    .tools-detail-panel,
+    .mcp-tools-panel,
+    .skills-list-panel,
+    .skill-detail-panel {
         height: auto;
         overflow: visible;
     }

@@ -33,6 +33,14 @@
                     <span class="nav-icon">◎</span>
                     <span>RAG 知识库</span>
                 </button>
+                <button class="nav-item" id="toolsPageBtn" type="button">
+                    <span class="nav-icon">⚙</span>
+                    <span>工具系统</span>
+                </button>
+                <button class="nav-item" id="skillsPageBtn" type="button">
+                    <span class="nav-icon">◇</span>
+                    <span>Skills</span>
+                </button>
             </nav>
 
             <div class="side-status">
@@ -179,7 +187,7 @@
                     </section>
 
                     <aside class="history-detail-panel">
-                        <div class="block-heading">记忆文件编辑</div>
+                        <div class="block-heading" id="historyDetailHeading">记忆文件编辑</div>
                         <div id="historyDetail" class="history-detail-empty">选择一个记忆文件查看详情。</div>
                     </aside>
                 </div>
@@ -244,6 +252,105 @@
                             </div>
                         </div>
                     </section>
+                </div>
+            </section>
+
+            <section class="page" id="toolsPage">
+                <header class="page-header">
+                    <div>
+                        <p class="eyebrow">Tool Management</p>
+                        <h1>工具系统</h1>
+                    </div>
+                    <div class="header-actions">
+                        <div class="segmented">
+                            <button class="segment active" id="localToolsTabBtn" type="button">本地 Tools</button>
+                            <button class="segment" id="mcpToolsTabBtn" type="button">MCP</button>
+                        </div>
+                        <button class="accent-btn" id="refreshToolsBtn" type="button">刷新</button>
+                    </div>
+                </header>
+
+                <div class="tools-tab-page active" id="localToolsPanel">
+                    <section class="tools-list-panel full">
+                        <div class="table-header">
+                            <div>
+                                <div class="toolbar-title">本地 Tools</div>
+                                <div class="toolbar-meta" id="toolsMeta">等待加载</div>
+                            </div>
+                        </div>
+                        <div class="tools-list" id="toolsList"></div>
+                    </section>
+                </div>
+
+                <div class="tools-tab-page" id="mcpToolsPanel">
+                    <div class="mcp-layout">
+                        <section class="tools-detail-panel">
+                            <div class="mcp-panel-header">
+                                <div>
+                                    <div class="block-heading">MCP Servers</div>
+                                    <div class="toolbar-meta" id="mcpMeta">等待加载</div>
+                                </div>
+                                <button class="secondary-btn compact-btn" id="refreshMcpBtn" type="button">刷新 MCP</button>
+                            </div>
+
+                            <form class="mcp-form" id="mcpForm">
+                                <input id="mcpServerName" type="text" maxlength="64" placeholder="serverName">
+                                <select id="mcpTransportType">
+                                    <option value="SSE">SSE</option>
+                                    <option value="STREAMABLE_HTTP">Streamable HTTP</option>
+                                </select>
+                                <input id="mcpBaseUrl" type="url" placeholder="https://example.com">
+                                <input id="mcpEndpoint" type="text" placeholder="/sse 或 /mcp">
+                                <input id="mcpRequestTimeoutSeconds" type="number" min="5" max="180" step="5" value="30" placeholder="超时秒数">
+                                <textarea id="mcpHeadersJson" rows="4" placeholder='{"Authorization":"Bearer xxx"}'></textarea>
+                                <button class="accent-btn" type="submit">新增 MCP</button>
+                            </form>
+
+                            <div class="mcp-server-list" id="mcpServerList"></div>
+                        </section>
+
+                        <section class="mcp-tools-panel">
+                            <div class="block-heading">MCP Tools</div>
+                            <div class="mcp-tool-list" id="mcpToolList"></div>
+                        </section>
+                    </div>
+                </div>
+            </section>
+
+            <section class="page" id="skillsPage">
+                <header class="page-header">
+                    <div>
+                        <p class="eyebrow">Skill Management</p>
+                        <h1>Skills</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="accent-btn" id="refreshSkillsBtn" type="button">刷新 Skills</button>
+                    </div>
+                </header>
+
+                <div class="skills-layout">
+                    <section class="skills-list-panel">
+                        <div class="table-header">
+                            <div>
+                                <div class="toolbar-title">Skills</div>
+                                <div class="toolbar-meta" id="skillsMeta">等待加载</div>
+                            </div>
+                        </div>
+                        <form class="skill-install-form" id="skillInstallForm">
+                            <input id="skillSourceUrl" type="url" placeholder="ZIP URL，例如 GitHub archive zip">
+                            <label class="inline-check">
+                                <input id="skillOverwrite" type="checkbox">
+                                <span>覆盖同名 Skill</span>
+                            </label>
+                            <button class="accent-btn" type="submit">安装 Skill</button>
+                        </form>
+                        <div class="skills-list" id="skillsList"></div>
+                    </section>
+
+                    <aside class="skill-detail-panel">
+                        <div class="block-heading">SKILL.md</div>
+                        <div id="skillDetail" class="history-detail-empty">选择一个 Skill 查看内容。</div>
+                    </aside>
                 </div>
             </section>
         </main>

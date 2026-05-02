@@ -22,6 +22,14 @@ import java.util.*;
  * 用于查询 Prometheus 的活动告警信息
  */
 @Component
+@ManagedTool(
+        name = "prometheus_metrics",
+        displayName = "Prometheus 告警查询",
+        description = "查询 Prometheus 告警、监控指标或系统告警状态",
+        riskLevel = "MEDIUM",
+        instruction = "当用户需要查询 Prometheus 告警、监控指标或系统告警状态时使用。",
+        order = 30
+)
 public class QueryMetricsTools {
 
     private static final Logger logger = LoggerFactory.getLogger(QueryMetricsTools.class);

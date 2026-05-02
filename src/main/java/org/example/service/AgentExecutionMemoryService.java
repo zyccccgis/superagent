@@ -19,8 +19,6 @@ public interface AgentExecutionMemoryService {
 
     AgentExecutionMemoryResponse get(String executionId);
 
-    AgentExecutionMemoryResponse create(AgentExecutionMemoryRequest request);
-
     AgentExecutionMemoryResponse update(String executionId, AgentExecutionMemoryRequest request);
 
     void delete(String executionId);

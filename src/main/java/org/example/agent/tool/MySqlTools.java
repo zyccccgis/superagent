@@ -33,6 +33,14 @@ import java.util.Set;
  */
 @Component
 @ConditionalOnProperty(prefix = "mysql.tool", name = "enabled", havingValue = "true")
+@ManagedTool(
+        name = "mysql",
+        displayName = "MySQL 工具",
+        description = "执行受控 MySQL 查询和数据变更",
+        riskLevel = "HIGH",
+        instruction = "当用户需要查询或修改 MySQL 业务数据时使用。查询用 executeMySqlQuery，写入用 executeMySqlUpdate。禁止执行高危 DDL。",
+        order = 50
+)
 public class MySqlTools {
 
     private static final Logger logger = LoggerFactory.getLogger(MySqlTools.class);

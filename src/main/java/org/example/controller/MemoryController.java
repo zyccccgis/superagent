@@ -123,17 +123,6 @@ public class MemoryController {
         }
     }
 
-    @PostMapping("/executions")
-    public ResponseEntity<ApiResponse<AgentExecutionMemoryResponse>> createExecution(
-            @RequestBody AgentExecutionMemoryRequest request) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success(executionMemoryService.create(request)));
-        } catch (Exception e) {
-            logger.error("创建短期记忆失败", e);
-            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
-        }
-    }
-
     @PutMapping("/executions")
     public ResponseEntity<ApiResponse<AgentExecutionMemoryResponse>> updateExecution(
             @RequestParam String executionId,

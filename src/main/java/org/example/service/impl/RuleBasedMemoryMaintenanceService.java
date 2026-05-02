@@ -241,15 +241,56 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
 
     private void ensureIndexContains(String targetPath, String description, String keywords) {
         String index = safeReadContent("MEMORY.md");
-        if (index.contains("`" + targetPath + "`")) {
-            return;
-        }
+        String normalizedIndex = removeTopicBlock(index, targetPath).stripTrailing();
         MemoryFileRequest request = new MemoryFileRequest();
         request.setPath("MEMORY.md");
-        request.setContent(index + "\n\n- `" + targetPath + "`\n"
+        request.setContent(normalizedIndex + "\n\n- `" + targetPath + "`\n"
                 + "  - description: " + compact(description, 160) + "\n"
                 + "  - keywords: " + compact(keywords, 160) + "\n");
         memoryService.updateFile(request);
+    }
+
+    private String removeTopicBlock(String index, String targetPath) {
+        String[] lines = (index == null ? "" : index).split("\\R", -1);
+        List<String> kept = new java.util.ArrayList<>();
+        boolean skipping = false;
+        for (String line : lines) {
+            if (targetPath.equals(parseTopicPathLine(line))) {
+                skipping = true;
+                trimTrailingBlankLines(kept);
+                continue;
+            }
+            if (skipping) {
+                if (parseTopicPathLine(line) != null) {
+                    skipping = false;
+                    kept.add(line);
+                }
+                continue;
+            }
+            kept.add(line);
+        }
+        trimTrailingBlankLines(kept);
+        return String.join("\n", kept);
+    }
+
+    private String parseTopicPathLine(String line) {
+        String trimmed = line == null ? "" : line.trim();
+        if (!trimmed.startsWith("- `")) {
+            return null;
+        }
+        int start = trimmed.indexOf('`');
+        int end = trimmed.indexOf('`', start + 1);
+        if (start < 0 || end <= start) {
+            return null;
+        }
+        String path = trimmed.substring(start + 1, end);
+        return path.startsWith("topics/") && path.endsWith(".md") ? path : null;
+    }
+
+    private void trimTrailingBlankLines(List<String> lines) {
+        while (!lines.isEmpty() && lines.get(lines.size() - 1).isBlank()) {
+            lines.remove(lines.size() - 1);
+        }
     }
 
     private String safeReadContent(String path) {

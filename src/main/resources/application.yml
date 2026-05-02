@@ -85,6 +85,9 @@ memory:
     success-threshold: 5
     before-compression: true
 
+skills:
+  base-path: ./skills
+
 # Prometheus 配置
 prometheus:
   base-url: http://localhost:9090
@@ -110,6 +113,18 @@ web:
     enabled: true
     timeout-seconds: 10
     max-response-chars: 12000
+
+# 公共搜索工具配置
+search:
+  tool:
+    timeout-seconds: 10
+    max-results: 5
+
+# 天气/地图工具配置
+weather-map:
+  tool:
+    timeout-seconds: 10
+    max-map-results: 5
 
 # Agent 安全限制
 agent:

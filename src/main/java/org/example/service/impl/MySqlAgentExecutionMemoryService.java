@@ -205,26 +205,6 @@ public class MySqlAgentExecutionMemoryService implements AgentExecutionMemorySer
     }
 
     @Override
-    public AgentExecutionMemoryResponse create(AgentExecutionMemoryRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("请求不能为空");
-        }
-        LocalDateTime now = LocalDateTime.now();
-        AgentExecutionMemory entity = new AgentExecutionMemory();
-        entity.setExecutionId(hasText(request.getExecutionId()) ? request.getExecutionId() : "manual_" + UUID.randomUUID().toString().replace("-", ""));
-        applyRequest(entity, request);
-        entity.setStatus(hasText(entity.getStatus()) ? entity.getStatus() : "MANUAL");
-        entity.setStartedAt(now);
-        entity.setFinishedAt(now);
-        entity.setDurationMs(0L);
-        entity.setCreatedAt(now);
-        entity.setUpdatedAt(now);
-        entity.setDeleted(0);
-        memoryMapper.insert(entity);
-        return AgentExecutionMemoryResponse.fromEntity(entity);
-    }
-
-    @Override
     public AgentExecutionMemoryResponse update(String executionId, AgentExecutionMemoryRequest request) {
         AgentExecutionMemory entity = getEntity(executionId);
         applyRequest(entity, request);

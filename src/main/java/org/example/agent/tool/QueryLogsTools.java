@@ -26,6 +26,14 @@ import java.lang.ClassLoader;
  * 支持 Mock 模式，提供与告警关联的模拟日志数据
  */
 @Component
+@ManagedTool(
+        name = "query_logs",
+        displayName = "日志查询",
+        description = "查询日志数据",
+        riskLevel = "MEDIUM",
+        instruction = "当用户需要查询日志时使用；默认查询地域 ap-guangzhou，查询时间范围为近一个月。",
+        order = 40
+)
 public class QueryLogsTools {
 
     private static final Logger logger = LoggerFactory.getLogger(QueryLogsTools.class);

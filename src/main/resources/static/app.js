@@ -7,6 +7,12 @@ class SuperBizConsole {
         this.historyRows = [];
         this.memoryView = 'long';
         this.ragDocuments = [];
+        this.tools = [];
+        this.mcpServers = [];
+        this.mcpTools = [];
+        this.skills = [];
+        this.toolsView = 'local';
+        this.selectedSkillName = null;
         this.selectedRagDocId = null;
         this.currentPage = 1;
         this.pageSize = 8;
@@ -26,7 +32,6 @@ class SuperBizConsole {
             { method: 'DELETE', path: '/api/memory/files', purpose: '删除记忆文件' },
             { method: 'GET', path: '/api/memory/executions', purpose: '分页查询短期记忆记录' },
             { method: 'GET', path: '/api/memory/executions/detail', purpose: '读取短期记忆详情' },
-            { method: 'POST', path: '/api/memory/executions', purpose: '创建短期记忆记录' },
             { method: 'PUT', path: '/api/memory/executions', purpose: '更新短期记忆记录' },
             { method: 'DELETE', path: '/api/memory/executions', purpose: '删除短期记忆记录' },
             { method: 'POST', path: '/api/memory/extract', purpose: '从执行结果抽取长期记忆' },
@@ -36,6 +41,13 @@ class SuperBizConsole {
             { method: 'POST', path: '/api/rag/documents', purpose: '上传知识库文件并建立索引' },
             { method: 'GET', path: '/api/rag/documents', purpose: '分页查询 RAG 文档元数据' },
             { method: 'POST', path: '/api/rag/retrieve', purpose: 'RAG 纯召回，返回 TopK 片段和 L2 distance' },
+            { method: 'GET', path: '/api/tools', purpose: '查询后端本地工具列表和启用状态' },
+            { method: 'PUT', path: '/api/tools/{toolName}/enabled', purpose: '修改本地工具启用状态' },
+            { method: 'GET', path: '/api/mcp/servers', purpose: '查询 MCP 服务配置和运行状态' },
+            { method: 'POST', path: '/api/mcp/servers', purpose: '新增 MCP 服务并刷新运行时' },
+            { method: 'GET', path: '/api/mcp/tools', purpose: '查询当前 MCP 工具快照' },
+            { method: 'GET', path: '/api/skills', purpose: '查询已安装 Skills' },
+            { method: 'POST', path: '/api/skills/install', purpose: '从 ZIP URL 安装 Skill' },
             { method: 'GET', path: '/milvus/health', purpose: '检测向量库健康状态' }
         ];
 
@@ -48,9 +60,13 @@ class SuperBizConsole {
         this.chatPageBtn = document.getElementById('chatPageBtn');
         this.historyPageBtn = document.getElementById('historyPageBtn');
         this.ragPageBtn = document.getElementById('ragPageBtn');
+        this.toolsPageBtn = document.getElementById('toolsPageBtn');
+        this.skillsPageBtn = document.getElementById('skillsPageBtn');
         this.chatPage = document.getElementById('chatPage');
         this.historyPage = document.getElementById('historyPage');
         this.ragPage = document.getElementById('ragPage');
+        this.toolsPage = document.getElementById('toolsPage');
+        this.skillsPage = document.getElementById('skillsPage');
         this.sidebarSessionId = document.getElementById('sidebarSessionId');
         this.copySessionBtn = document.getElementById('copySessionBtn');
         this.newSessionBtn = document.getElementById('newSessionBtn');
@@ -77,6 +93,7 @@ class SuperBizConsole {
         this.prevPageBtn = document.getElementById('prevPageBtn');
         this.nextPageBtn = document.getElementById('nextPageBtn');
         this.pageNumbers = document.getElementById('pageNumbers');
+        this.historyDetailHeading = document.getElementById('historyDetailHeading');
         this.historyDetail = document.getElementById('historyDetail');
         this.longMemoryBtn = document.getElementById('longMemoryBtn');
         this.shortMemoryBtn = document.getElementById('shortMemoryBtn');
@@ -94,6 +111,31 @@ class SuperBizConsole {
         this.ragResultMeta = document.getElementById('ragResultMeta');
         this.ragTopKSelect = document.getElementById('ragTopKSelect');
         this.ragResultList = document.getElementById('ragResultList');
+        this.refreshToolsBtn = document.getElementById('refreshToolsBtn');
+        this.localToolsTabBtn = document.getElementById('localToolsTabBtn');
+        this.mcpToolsTabBtn = document.getElementById('mcpToolsTabBtn');
+        this.localToolsPanel = document.getElementById('localToolsPanel');
+        this.mcpToolsPanel = document.getElementById('mcpToolsPanel');
+        this.toolsMeta = document.getElementById('toolsMeta');
+        this.toolsList = document.getElementById('toolsList');
+        this.refreshMcpBtn = document.getElementById('refreshMcpBtn');
+        this.mcpMeta = document.getElementById('mcpMeta');
+        this.mcpForm = document.getElementById('mcpForm');
+        this.mcpServerName = document.getElementById('mcpServerName');
+        this.mcpTransportType = document.getElementById('mcpTransportType');
+        this.mcpBaseUrl = document.getElementById('mcpBaseUrl');
+        this.mcpEndpoint = document.getElementById('mcpEndpoint');
+        this.mcpRequestTimeoutSeconds = document.getElementById('mcpRequestTimeoutSeconds');
+        this.mcpHeadersJson = document.getElementById('mcpHeadersJson');
+        this.mcpServerList = document.getElementById('mcpServerList');
+        this.mcpToolList = document.getElementById('mcpToolList');
+        this.refreshSkillsBtn = document.getElementById('refreshSkillsBtn');
+        this.skillInstallForm = document.getElementById('skillInstallForm');
+        this.skillSourceUrl = document.getElementById('skillSourceUrl');
+        this.skillOverwrite = document.getElementById('skillOverwrite');
+        this.skillsMeta = document.getElementById('skillsMeta');
+        this.skillsList = document.getElementById('skillsList');
+        this.skillDetail = document.getElementById('skillDetail');
         this.toast = document.getElementById('toast');
     }
 
@@ -101,6 +143,8 @@ class SuperBizConsole {
         this.chatPageBtn.addEventListener('click', () => this.switchPage('chat'));
         this.historyPageBtn.addEventListener('click', () => this.switchPage('history'));
         this.ragPageBtn.addEventListener('click', () => this.switchPage('rag'));
+        this.toolsPageBtn.addEventListener('click', () => this.switchPage('tools'));
+        this.skillsPageBtn.addEventListener('click', () => this.switchPage('skills'));
         this.copySessionBtn.addEventListener('click', () => this.copySessionId());
         this.newSessionBtn.addEventListener('click', () => this.startNewSession());
         this.clearBackendSessionBtn.addEventListener('click', () => this.clearBackendSession());
@@ -117,10 +161,10 @@ class SuperBizConsole {
             }
         });
 
-        document.querySelectorAll('.segment').forEach(button => {
+        document.querySelectorAll('.conversation-toolbar .segment').forEach(button => {
             button.addEventListener('click', () => {
                 this.mode = button.dataset.mode;
-                document.querySelectorAll('.segment').forEach(item => item.classList.toggle('active', item === button));
+                document.querySelectorAll('.conversation-toolbar .segment').forEach(item => item.classList.toggle('active', item === button));
                 this.updateChatMeta();
             });
         });
@@ -155,6 +199,19 @@ class SuperBizConsole {
             }
         });
         this.ragTopKSelect.addEventListener('change', () => this.searchRag(false));
+        this.refreshToolsBtn.addEventListener('click', () => this.refreshCurrentToolsView(true));
+        this.localToolsTabBtn.addEventListener('click', () => this.switchToolsView('local'));
+        this.mcpToolsTabBtn.addEventListener('click', () => this.switchToolsView('mcp'));
+        this.refreshSkillsBtn.addEventListener('click', () => this.refreshSkills(true));
+        this.refreshMcpBtn.addEventListener('click', () => this.refreshMcpRuntime(true));
+        this.mcpForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            this.createMcpServer();
+        });
+        this.skillInstallForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            this.installSkill();
+        });
         this.ragUploadZone.addEventListener('dragover', (event) => {
             event.preventDefault();
             this.ragUploadZone.classList.add('dragover');
@@ -174,6 +231,10 @@ class SuperBizConsole {
         this.refreshMemoryFiles();
         this.renderRagDocuments();
         this.renderRagHints();
+        this.renderTools();
+        this.renderMcpServers();
+        this.renderMcpTools();
+        this.renderSkills();
         this.updateSessionDisplay();
         this.updateChatMeta();
     }
@@ -181,12 +242,18 @@ class SuperBizConsole {
     switchPage(page) {
         const showHistory = page === 'history';
         const showRag = page === 'rag';
-        this.chatPage.classList.toggle('active', !showHistory && !showRag);
+        const showTools = page === 'tools';
+        const showSkills = page === 'skills';
+        this.chatPage.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills);
         this.historyPage.classList.toggle('active', showHistory);
         this.ragPage.classList.toggle('active', showRag);
-        this.chatPageBtn.classList.toggle('active', !showHistory && !showRag);
+        this.toolsPage.classList.toggle('active', showTools);
+        this.skillsPage.classList.toggle('active', showSkills);
+        this.chatPageBtn.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills);
         this.historyPageBtn.classList.toggle('active', showHistory);
         this.ragPageBtn.classList.toggle('active', showRag);
+        this.toolsPageBtn.classList.toggle('active', showTools);
+        this.skillsPageBtn.classList.toggle('active', showSkills);
         if (showHistory) {
             this.captureCurrentSessionToHistory();
             this.refreshMemoryFiles();
@@ -194,6 +261,12 @@ class SuperBizConsole {
         if (showRag) {
             this.refreshRagDocumentsFromBackend();
             this.renderRagDocuments();
+        }
+        if (showTools) {
+            this.refreshCurrentToolsView(false);
+        }
+        if (showSkills) {
+            this.refreshSkills(false);
         }
     }
 
@@ -469,27 +542,6 @@ class SuperBizConsole {
     }
 
     async seedStaticHistory() {
-        if (this.memoryView === 'short') {
-            const payload = await this.fetchJson(`${this.apiBaseUrl}/memory/executions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionId: this.sessionId,
-                    userInput: '手动创建短期记忆',
-                    agentOutput: '',
-                    status: 'MANUAL'
-                })
-            });
-            if (payload.code !== 200) {
-                this.showToast(payload.message || '创建失败');
-                return;
-            }
-            this.selectedHistoryId = payload.data.executionId;
-            await this.refreshMemoryFiles(false);
-            await this.selectHistoryRow(this.selectedHistoryId);
-            this.showToast('已创建短期记忆');
-            return;
-        }
         const path = `topics/new-memory-${Date.now()}.md`;
         const payload = await this.fetchJson(`${this.apiBaseUrl}/memory/files`, {
             method: 'POST',
@@ -630,8 +682,10 @@ class SuperBizConsole {
         this.selectedHistoryId = null;
         this.longMemoryBtn.classList.toggle('active', view === 'long');
         this.shortMemoryBtn.classList.toggle('active', view === 'short');
-        this.seedHistoryBtn.textContent = view === 'long' ? '新建主题记忆' : '新建短期记忆';
+        this.seedHistoryBtn.textContent = '新建主题记忆';
+        this.seedHistoryBtn.style.display = view === 'long' ? '' : 'none';
         this.syncVisibleRowsBtn.textContent = view === 'long' ? '刷新记忆文件' : '刷新短期记忆';
+        this.historyDetailHeading.textContent = view === 'long' ? '记忆文件编辑' : '短期记忆详情';
         this.historyKeyword.placeholder = view === 'long' ? '按路径过滤' : '按 executionId、sessionId、内容过滤';
         this.configureMemoryStatusOptions();
         this.refreshMemoryFiles();
@@ -729,14 +783,22 @@ class SuperBizConsole {
                 <span><strong>耗时</strong>${row.durationMs ?? 0} ms</span>
                 <span><strong>更新时间</strong>${this.formatDate(row.updatedAt || row.createdAt)}</span>
             </div>
-            <div class="detail-preview">
+            <div class="detail-preview short-memory-detail">
                 <div class="block-heading">短期记忆内容</div>
-                <label class="memory-label">用户输入</label>
-                <textarea class="memory-editor compact" id="shortUserInput">${this.escapeHtml(row.userInput || '')}</textarea>
-                <label class="memory-label">Agent 输出</label>
-                <textarea class="memory-editor" id="shortAgentOutput">${this.escapeHtml(row.agentOutput || '')}</textarea>
-                <label class="memory-label">状态</label>
-                <input class="memory-input" id="shortStatus" value="${this.escapeAttr(row.status || 'MANUAL')}">
+                <div class="short-memory-fields">
+                    <div class="short-memory-field user-field">
+                        <label class="memory-label">用户输入</label>
+                        <textarea class="memory-editor compact" id="shortUserInput">${this.escapeHtml(row.userInput || '')}</textarea>
+                    </div>
+                    <div class="short-memory-field output-field">
+                        <label class="memory-label">Agent 输出</label>
+                        <textarea class="memory-editor" id="shortAgentOutput">${this.escapeHtml(row.agentOutput || '')}</textarea>
+                    </div>
+                    <div class="short-memory-field status-field">
+                        <label class="memory-label">状态</label>
+                        <input class="memory-input" id="shortStatus" value="${this.escapeAttr(row.status || 'MANUAL')}">
+                    </div>
+                </div>
                 <div class="memory-actions">
                     <button class="accent-btn" id="saveShortMemoryBtn" type="button">保存</button>
                     <button class="secondary-btn" id="deleteShortMemoryBtn" type="button">删除</button>
@@ -1045,6 +1107,380 @@ class SuperBizConsole {
         `;
     }
 
+    async refreshTools(showToast = false) {
+        try {
+            this.toolsMeta.textContent = '正在加载...';
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/tools`);
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || '工具列表查询失败');
+            }
+            this.tools = payload.data.items || [];
+            this.renderTools();
+            if (showToast) this.showToast('工具列表已刷新');
+        } catch (error) {
+            this.toolsMeta.textContent = '加载失败';
+            this.toolsList.innerHTML = `
+                <div class="history-detail-empty">无法加载工具列表：${this.escapeHtml(error.message)}</div>
+            `;
+            if (showToast) this.showToast(`工具列表加载失败：${error.message}`);
+        }
+    }
+
+    switchToolsView(view) {
+        this.toolsView = view;
+        const showLocal = view === 'local';
+        const showMcp = view === 'mcp';
+        this.localToolsTabBtn.classList.toggle('active', showLocal);
+        this.mcpToolsTabBtn.classList.toggle('active', showMcp);
+        this.localToolsPanel.classList.toggle('active', showLocal);
+        this.mcpToolsPanel.classList.toggle('active', showMcp);
+        this.refreshToolsBtn.textContent = showLocal ? '刷新' : '刷新 MCP';
+        this.refreshCurrentToolsView(false);
+    }
+
+    async refreshCurrentToolsView(showToast = false) {
+        if (this.toolsView === 'mcp') {
+            await this.refreshMcpServers(showToast);
+            await this.refreshMcpTools(false);
+            return;
+        }
+        await this.refreshTools(showToast);
+    }
+
+    renderTools() {
+        if (!this.toolsList || !this.toolsMeta) return;
+        const enabledCount = this.tools.filter(tool => tool.enabled).length;
+        this.toolsMeta.textContent = `${this.tools.length} 个工具 · ${enabledCount} 个已启用`;
+        this.toolsList.innerHTML = this.tools.map(tool => `
+            <article class="tool-card ${tool.enabled ? 'enabled' : ''} ${tool.available === false ? 'unavailable' : ''}">
+                <div class="tool-card-main">
+                    <div class="tool-title-row">
+                        <div>
+                            <div class="tool-name">${this.escapeHtml(tool.displayName || tool.toolName)}</div>
+                            <div class="tool-code">${this.escapeHtml(tool.toolName || '-')} · ${this.escapeHtml(tool.sourceClass || '-')}</div>
+                        </div>
+                        <span class="risk-badge ${this.riskClass(tool.riskLevel)}">${this.escapeHtml(tool.riskLevel || 'LOW')}</span>
+                    </div>
+                    <div class="tool-description">${this.escapeHtml(tool.description || '')}</div>
+                    <div class="tool-meta-row">
+                        <span>${tool.available === false ? '后端不可用' : '后端可用'}</span>
+                        <span>更新时间 ${this.formatDate(tool.updatedAt)}</span>
+                    </div>
+                </div>
+                <label class="tool-switch">
+                    <input type="checkbox" data-tool-name="${this.escapeAttr(tool.toolName)}" ${tool.enabled ? 'checked' : ''} ${tool.available === false ? 'disabled' : ''}>
+                    <span></span>
+                </label>
+            </article>
+        `).join('') || `
+            <div class="empty-state compact">
+                <div class="empty-title">没有可管理工具</div>
+                <div class="empty-copy">后端没有扫描到带 @ManagedTool 的本地 Tool Bean。</div>
+            </div>
+        `;
+
+        this.toolsList.querySelectorAll('.tool-switch input').forEach(input => {
+            input.addEventListener('change', () => this.toggleTool(input.dataset.toolName, input.checked, input));
+        });
+    }
+
+    async toggleTool(toolName, enabled, input) {
+        if (!toolName) return;
+        input.disabled = true;
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/tools/${encodeURIComponent(toolName)}/enabled`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled })
+            });
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || '工具开关更新失败');
+            }
+            const index = this.tools.findIndex(tool => tool.toolName === toolName);
+            if (index >= 0) this.tools[index] = payload.data;
+            this.renderTools();
+            this.showToast(`${payload.data.displayName || toolName} 已${payload.data.enabled ? '启用' : '停用'}`);
+        } catch (error) {
+            input.checked = !enabled;
+            input.disabled = false;
+            this.showToast(`工具开关更新失败：${error.message}`);
+        }
+    }
+
+    async refreshMcpServers(showToast = false) {
+        try {
+            this.mcpMeta.textContent = '正在加载 MCP...';
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/mcp/servers`);
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || 'MCP 服务列表查询失败');
+            }
+            this.mcpServers = payload.data.items || [];
+            this.renderMcpServers();
+            if (showToast) this.showToast('MCP 服务已刷新');
+        } catch (error) {
+            this.mcpMeta.textContent = 'MCP 加载失败';
+            this.mcpServerList.innerHTML = `<div class="history-detail-empty">无法加载 MCP 服务：${this.escapeHtml(error.message)}</div>`;
+            if (showToast) this.showToast(`MCP 服务加载失败：${error.message}`);
+        }
+    }
+
+    async refreshMcpTools(showToast = false) {
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/mcp/tools`);
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || 'MCP 工具查询失败');
+            }
+            this.mcpTools = payload.data.items || [];
+            this.renderMcpTools();
+            if (showToast) this.showToast('MCP 工具快照已刷新');
+        } catch (error) {
+            this.mcpToolList.innerHTML = `<div class="history-detail-empty">无法加载 MCP 工具：${this.escapeHtml(error.message)}</div>`;
+        }
+    }
+
+    async refreshMcpRuntime(showToast = false) {
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/mcp/servers/refresh`, { method: 'POST' });
+            if (payload.code !== 200) {
+                throw new Error(payload.message || 'MCP 运行时刷新失败');
+            }
+            this.mcpServers = payload.data?.items || [];
+            await this.refreshMcpTools(false);
+            this.renderMcpServers();
+            if (showToast) this.showToast('MCP 运行时已刷新');
+        } catch (error) {
+            if (showToast) this.showToast(`MCP 运行时刷新失败：${error.message}`);
+        }
+    }
+
+    async createMcpServer() {
+        const request = {
+            serverName: this.mcpServerName.value.trim(),
+            transportType: this.mcpTransportType.value,
+            baseUrl: this.mcpBaseUrl.value.trim(),
+            endpoint: this.mcpEndpoint.value.trim(),
+            headersJson: this.mcpHeadersJson.value.trim() || null,
+            requestTimeoutSeconds: Number(this.mcpRequestTimeoutSeconds.value || 30),
+            enabled: true
+        };
+        if (!request.serverName || !request.baseUrl || !request.endpoint) {
+            this.showToast('请填写 MCP 服务名、baseUrl 和 endpoint');
+            return;
+        }
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/mcp/servers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request)
+            });
+            if (payload.code !== 200) {
+                throw new Error(payload.message || 'MCP 服务创建失败');
+            }
+            this.mcpForm.reset();
+            this.mcpRequestTimeoutSeconds.value = '30';
+            await this.refreshMcpServers(false);
+            await this.refreshMcpTools(false);
+            this.showToast('MCP 服务已创建');
+        } catch (error) {
+            this.showToast(`MCP 服务创建失败：${error.message}`);
+        }
+    }
+
+    renderMcpServers() {
+        if (!this.mcpServerList || !this.mcpMeta) return;
+        const connectedCount = this.mcpServers.filter(server => server.status === 'CONNECTED').length;
+        this.mcpMeta.textContent = `${this.mcpServers.length} 个服务 · ${connectedCount} 个已连接`;
+        this.mcpServerList.innerHTML = this.mcpServers.map(server => `
+            <article class="mcp-server-card">
+                <div class="mcp-server-top">
+                    <div>
+                        <div class="tool-name">${this.escapeHtml(server.serverName || '-')}</div>
+                        <div class="tool-code">${this.escapeHtml(server.transportType || '-')} · ${this.escapeHtml(server.baseUrl || '')}${this.escapeHtml(server.endpoint || '')}</div>
+                    </div>
+                    <span class="mcp-status ${String(server.status || 'unknown').toLowerCase()}">${this.escapeHtml(server.status || 'UNKNOWN')}</span>
+                </div>
+                ${server.status === 'FAILED' && server.lastError ? `<div class="mcp-error">${this.escapeHtml(server.lastError)}</div>` : ''}
+                <div class="tool-meta-row">
+                    <span>${server.toolCount || 0} 个工具</span>
+                    <span>${server.enabled ? '已启用' : '已停用'}</span>
+                    <span>${server.requestTimeoutSeconds || 30}s 超时</span>
+                    <span>${server.headersJson ? '已配置请求头' : '无请求头'}</span>
+                </div>
+                <div class="mcp-actions">
+                    <button class="secondary-btn compact-btn" data-action="toggle" data-id="${server.id}" data-enabled="${server.enabled ? 'false' : 'true'}" type="button">${server.enabled ? '停用' : '启用'}</button>
+                    <button class="secondary-btn compact-btn" data-action="refresh" data-id="${server.id}" type="button">刷新</button>
+                    <button class="secondary-btn compact-btn danger" data-action="delete" data-id="${server.id}" type="button">删除</button>
+                </div>
+            </article>
+        `).join('') || '<div class="history-detail-empty">还没有 MCP Server。</div>';
+
+        this.mcpServerList.querySelectorAll('button[data-action]').forEach(button => {
+            button.addEventListener('click', () => this.handleMcpAction(button.dataset.action, button.dataset.id, button.dataset.enabled));
+        });
+    }
+
+    renderMcpTools() {
+        if (!this.mcpToolList) return;
+        this.mcpToolList.innerHTML = this.mcpTools.map(tool => `
+            <div class="mcp-tool-card">
+                <strong>${this.escapeHtml(tool.toolName || '-')}</strong>
+                <span>${this.escapeHtml(tool.serverName || '-')}</span>
+                <p>${this.escapeHtml(tool.description || '')}</p>
+            </div>
+        `).join('') || '<div class="history-detail-empty">当前 MCP 快照没有工具。</div>';
+    }
+
+    async handleMcpAction(action, id, enabled) {
+        try {
+            if (action === 'toggle') {
+                const payload = await this.fetchJson(`${this.apiBaseUrl}/mcp/servers/${encodeURIComponent(id)}/enabled`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enabled === 'true' })
+                });
+                if (payload.code !== 200) throw new Error(payload.message || '更新失败');
+                this.showToast('MCP 开关已更新');
+            }
+            if (action === 'refresh') {
+                const payload = await this.fetchJson(`${this.apiBaseUrl}/mcp/servers/${encodeURIComponent(id)}/refresh`, { method: 'POST' });
+                if (payload.code !== 200) throw new Error(payload.message || '刷新失败');
+                this.showToast('MCP 服务已刷新');
+            }
+            if (action === 'delete') {
+                const payload = await this.fetchJson(`${this.apiBaseUrl}/mcp/servers/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                if (payload.code !== 200) throw new Error(payload.message || '删除失败');
+                this.showToast('MCP 服务已删除');
+            }
+            await this.refreshMcpServers(false);
+            await this.refreshMcpTools(false);
+        } catch (error) {
+            this.showToast(`MCP 操作失败：${error.message}`);
+        }
+    }
+
+    async refreshSkills(showToast = false) {
+        try {
+            this.skillsMeta.textContent = '正在加载 Skills...';
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/skills`);
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || 'Skills 查询失败');
+            }
+            this.skills = payload.data.items || [];
+            this.renderSkills();
+            if (showToast) this.showToast('Skills 已刷新');
+        } catch (error) {
+            this.skillsMeta.textContent = 'Skills 加载失败';
+            this.skillsList.innerHTML = `<div class="history-detail-empty">无法加载 Skills：${this.escapeHtml(error.message)}</div>`;
+        }
+    }
+
+    async installSkill() {
+        const sourceUrl = this.skillSourceUrl.value.trim();
+        if (!sourceUrl) {
+            this.showToast('请输入 Skill ZIP URL');
+            return;
+        }
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/skills/install`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sourceUrl, overwrite: this.skillOverwrite.checked })
+            });
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || 'Skill 安装失败');
+            }
+            this.skillInstallForm.reset();
+            this.selectedSkillName = payload.data.name;
+            await this.refreshSkills(false);
+            await this.loadSkillDetail(payload.data.name);
+            this.showToast('Skill 已安装');
+        } catch (error) {
+            this.showToast(`Skill 安装失败：${error.message}`);
+        }
+    }
+
+    renderSkills() {
+        if (!this.skillsList || !this.skillsMeta) return;
+        const enabledCount = this.skills.filter(skill => skill.enabled).length;
+        this.skillsMeta.textContent = `${this.skills.length} 个 Skill · ${enabledCount} 个已启用`;
+        this.skillsList.innerHTML = this.skills.map(skill => `
+            <article class="skill-card ${skill.name === this.selectedSkillName ? 'active' : ''}" data-name="${this.escapeAttr(skill.name)}">
+                <div>
+                    <div class="tool-name">${this.escapeHtml(skill.displayName || skill.name)}</div>
+                    <div class="tool-code">${this.escapeHtml(skill.name)} · ${this.escapeHtml(skill.sourceType || '-')}</div>
+                    <div class="tool-description">${this.escapeHtml(skill.description || '')}</div>
+                    <div class="tool-meta-row">
+                        <span>${skill.enabled ? '已启用' : '已停用'}</span>
+                        <span>${this.formatFileSize(skill.size || 0)}</span>
+                        <span>${this.formatDate(skill.updatedAt)}</span>
+                    </div>
+                </div>
+                <div class="mcp-actions">
+                    <button class="secondary-btn compact-btn" data-action="toggle" data-name="${this.escapeAttr(skill.name)}" data-enabled="${skill.enabled ? 'false' : 'true'}" type="button">${skill.enabled ? '停用' : '启用'}</button>
+                    <button class="secondary-btn compact-btn danger" data-action="delete" data-name="${this.escapeAttr(skill.name)}" type="button">删除</button>
+                </div>
+            </article>
+        `).join('') || '<div class="history-detail-empty">还没有安装 Skills。</div>';
+
+        this.skillsList.querySelectorAll('.skill-card').forEach(card => {
+            card.addEventListener('click', (event) => {
+                if (event.target.closest('button')) return;
+                this.loadSkillDetail(card.dataset.name);
+            });
+        });
+        this.skillsList.querySelectorAll('button[data-action]').forEach(button => {
+            button.addEventListener('click', () => this.handleSkillAction(button.dataset.action, button.dataset.name, button.dataset.enabled));
+        });
+    }
+
+    async loadSkillDetail(name) {
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/skills/${encodeURIComponent(name)}`);
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || 'Skill 读取失败');
+            }
+            this.selectedSkillName = name;
+            this.skillDetail.innerHTML = `
+                <div class="detail-title">${this.escapeHtml(payload.data.displayName || payload.data.name)}</div>
+                <div class="detail-meta">
+                    <span><strong>名称</strong>${this.escapeHtml(payload.data.name)}</span>
+                    <span><strong>来源</strong>${this.escapeHtml(payload.data.sourceType || '-')}</span>
+                    <span><strong>状态</strong>${payload.data.enabled ? '启用' : '停用'}</span>
+                </div>
+                <textarea class="memory-editor skill-content" readonly>${this.escapeHtml(payload.data.content || '')}</textarea>
+            `;
+            this.renderSkills();
+        } catch (error) {
+            this.showToast(`Skill 读取失败：${error.message}`);
+        }
+    }
+
+    async handleSkillAction(action, name, enabled) {
+        try {
+            if (action === 'toggle') {
+                const payload = await this.fetchJson(`${this.apiBaseUrl}/skills/${encodeURIComponent(name)}/enabled`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enabled === 'true' })
+                });
+                if (payload.code !== 200) throw new Error(payload.message || '更新失败');
+                this.showToast('Skill 开关已更新');
+            }
+            if (action === 'delete') {
+                const payload = await this.fetchJson(`${this.apiBaseUrl}/skills/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                if (payload.code !== 200) throw new Error(payload.message || '删除失败');
+                if (this.selectedSkillName === name) {
+                    this.selectedSkillName = null;
+                    this.skillDetail.innerHTML = '选择一个 Skill 查看内容。';
+                }
+                this.showToast('Skill 已删除');
+            }
+            await this.refreshSkills(false);
+        } catch (error) {
+            this.showToast(`Skill 操作失败：${error.message}`);
+        }
+    }
+
     tokenize(text) {
         return String(text || '')
             .toLowerCase()
@@ -1143,6 +1579,10 @@ class SuperBizConsole {
     ragSourceLabel(source) {
         if (source === 'backend') return '后端知识库';
         return '知识库文档';
+    }
+
+    riskClass(riskLevel) {
+        return String(riskLevel || 'LOW').toLowerCase();
     }
 
     formatDate(value) {

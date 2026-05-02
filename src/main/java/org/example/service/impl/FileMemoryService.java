@@ -21,9 +21,11 @@ import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 @Service
@@ -37,6 +39,7 @@ public class FileMemoryService implements MemoryService {
     private final Path memoryRoot;
     private final int maxIndexLines;
     private final int shortMemoryPairs;
+    private final Object memoryFileLock = new Object();
 
     public FileMemoryService(AgentExecutionMemoryService executionMemoryService,
                              @Value("${memory.base-path:./memory}") String memoryBasePath,
@@ -50,84 +53,253 @@ public class FileMemoryService implements MemoryService {
 
     @PostConstruct
     public void init() throws IOException {
-        Files.createDirectories(memoryRoot.resolve("topics"));
-        Path indexPath = memoryRoot.resolve(INDEX_FILE);
-        if (!Files.exists(indexPath)) {
-            Files.writeString(indexPath, "# MEMORY Index\n\n## Topics\n", StandardCharsets.UTF_8);
+        synchronized (memoryFileLock) {
+            Files.createDirectories(memoryRoot.resolve("topics"));
+            Path indexPath = memoryRoot.resolve(INDEX_FILE);
+            if (!Files.exists(indexPath)) {
+                Files.writeString(indexPath, "# MEMORY Index\n\n## Topics\n", StandardCharsets.UTF_8);
+            }
+            synchronizeIndexWithTopicFiles();
         }
     }
 
     @Override
     public MemoryContext loadContext(String sessionId, String question, List<Map<String, String>> recentHistory) {
-        MemoryContext context = new MemoryContext();
-        String memoryIndex = readStringIfExists(memoryRoot.resolve(INDEX_FILE));
-        context.setMemoryIndex(memoryIndex);
-        context.setTopicFiles(selectTopicFiles(memoryIndex, question));
-        context.setShortMemory(buildShortMemory(sessionId, recentHistory));
-        return context;
+        synchronized (memoryFileLock) {
+            ensureRoot();
+            synchronizeIndexWithTopicFiles();
+            MemoryContext context = new MemoryContext();
+            String memoryIndex = readStringIfExists(memoryRoot.resolve(INDEX_FILE));
+            context.setMemoryIndex(memoryIndex);
+            context.setTopicFiles(selectTopicFiles(memoryIndex, question));
+            context.setShortMemory(buildShortMemory(sessionId, recentHistory));
+            return context;
+        }
     }
 
     @Override
     public MemoryFileListResponse listFiles(String type, String keyword) {
-        ensureRoot();
-        String normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
-        String normalizedType = type == null ? "all" : type.trim();
-        List<MemoryFileResponse> files = new ArrayList<>();
-        try (Stream<Path> stream = Files.walk(memoryRoot, 2)) {
-            stream.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".md"))
-                    .map(this::toResponseWithoutContent)
-                    .filter(file -> "all".equalsIgnoreCase(normalizedType) || file.getType().equalsIgnoreCase(normalizedType))
-                    .filter(file -> normalizedKeyword.isEmpty()
-                            || file.getPath().toLowerCase(Locale.ROOT).contains(normalizedKeyword))
-                    .sorted(Comparator.comparing(MemoryFileResponse::getPath))
-                    .forEach(files::add);
-        } catch (IOException e) {
-            throw new IllegalStateException("读取记忆文件列表失败", e);
-        }
+        synchronized (memoryFileLock) {
+            ensureRoot();
+            synchronizeIndexWithTopicFiles();
+            String normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
+            String normalizedType = type == null ? "all" : type.trim();
+            List<MemoryFileResponse> files = new ArrayList<>();
+            try (Stream<Path> stream = Files.walk(memoryRoot, 2)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().endsWith(".md"))
+                        .map(this::toResponseWithoutContent)
+                        .filter(file -> "all".equalsIgnoreCase(normalizedType) || file.getType().equalsIgnoreCase(normalizedType))
+                        .filter(file -> normalizedKeyword.isEmpty()
+                                || file.getPath().toLowerCase(Locale.ROOT).contains(normalizedKeyword))
+                        .sorted(Comparator.comparing(MemoryFileResponse::getPath))
+                        .forEach(files::add);
+            } catch (IOException e) {
+                throw new IllegalStateException("读取记忆文件列表失败", e);
+            }
 
-        MemoryFileListResponse response = new MemoryFileListResponse();
-        response.setItems(files);
-        response.setTotal(files.size());
-        return response;
+            MemoryFileListResponse response = new MemoryFileListResponse();
+            response.setItems(files);
+            response.setTotal(files.size());
+            return response;
+        }
     }
 
     @Override
     public MemoryFileResponse readFile(String path) {
-        Path resolved = resolveAllowedPath(path);
-        MemoryFileResponse response = toResponseWithoutContent(resolved);
-        response.setContent(readStringIfExists(resolved));
-        return response;
+        synchronized (memoryFileLock) {
+            Path resolved = resolveAllowedPath(path);
+            MemoryFileResponse response = toResponseWithoutContent(resolved);
+            response.setContent(readStringIfExists(resolved));
+            return response;
+        }
     }
 
     @Override
     public MemoryFileResponse createFile(MemoryFileRequest request) {
-        Path resolved = resolveAllowedPath(requiredPath(request));
-        if (Files.exists(resolved)) {
-            throw new IllegalArgumentException("记忆文件已存在");
+        synchronized (memoryFileLock) {
+            Path resolved = resolveAllowedPath(requiredPath(request));
+            if (Files.exists(resolved)) {
+                throw new IllegalArgumentException("记忆文件已存在");
+            }
+            writeFile(resolved, request.getContent());
+            synchronizeIndexWithTopicFiles();
+            return readFile(request.getPath());
         }
-        writeFile(resolved, request.getContent());
-        return readFile(request.getPath());
     }
 
     @Override
     public MemoryFileResponse updateFile(MemoryFileRequest request) {
-        Path resolved = resolveAllowedPath(requiredPath(request));
-        writeFile(resolved, request.getContent());
-        return readFile(request.getPath());
+        synchronized (memoryFileLock) {
+            Path resolved = resolveAllowedPath(requiredPath(request));
+            writeFile(resolved, request.getContent());
+            synchronizeIndexWithTopicFiles();
+            return readFile(request.getPath());
+        }
     }
 
     @Override
     public void deleteFile(String path) {
-        if (INDEX_FILE.equals(normalizeRelativePath(path))) {
-            throw new IllegalArgumentException("MEMORY.md 索引文件不能删除");
+        synchronized (memoryFileLock) {
+            String normalizedPath = normalizeRelativePath(path);
+            if (INDEX_FILE.equals(normalizedPath)) {
+                throw new IllegalArgumentException("MEMORY.md 索引文件不能删除");
+            }
+            Path resolved = resolveAllowedPath(normalizedPath);
+            try {
+                Files.deleteIfExists(resolved);
+                removeTopicFromIndex(normalizedPath);
+                synchronizeIndexWithTopicFiles();
+            } catch (IOException e) {
+                throw new IllegalStateException("删除记忆文件失败", e);
+            }
         }
-        Path resolved = resolveAllowedPath(path);
+    }
+
+    private void synchronizeIndexWithTopicFiles() {
+        Path indexPath = memoryRoot.resolve(INDEX_FILE);
         try {
-            Files.deleteIfExists(resolved);
+            Files.createDirectories(memoryRoot.resolve("topics"));
+            if (!Files.exists(indexPath)) {
+                Files.writeString(indexPath, "# MEMORY Index\n\n## Topics\n", StandardCharsets.UTF_8);
+            }
+            List<String> topicFiles = listTopicFilePaths();
+            Set<String> actualTopics = new LinkedHashSet<>(topicFiles);
+            String current = readStringIfExists(indexPath);
+            String cleaned = removeMissingAndDuplicateTopicBlocks(ensureIndexHeader(current), actualTopics);
+            Set<String> indexedTopics = new LinkedHashSet<>(extractTopicPaths(cleaned));
+            StringBuilder builder = new StringBuilder(trimEnd(cleaned));
+            for (String topicPath : topicFiles) {
+                if (!indexedTopics.contains(topicPath)) {
+                    builder.append("\n\n").append(defaultTopicIndexEntry(topicPath));
+                }
+            }
+            String synchronizedIndex = trimEnd(builder.toString()) + "\n";
+            if (!synchronizedIndex.equals(current)) {
+                writeFile(indexPath, synchronizedIndex);
+            }
         } catch (IOException e) {
-            throw new IllegalStateException("删除记忆文件失败", e);
+            throw new IllegalStateException("同步 MEMORY.md 索引失败", e);
         }
+    }
+
+    private List<String> listTopicFilePaths() throws IOException {
+        Path topicsRoot = memoryRoot.resolve("topics");
+        if (!Files.exists(topicsRoot)) {
+            return List.of();
+        }
+        try (Stream<Path> stream = Files.walk(topicsRoot)) {
+            return stream.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".md"))
+                    .map(path -> memoryRoot.relativize(path.normalize()).toString().replace('\\', '/'))
+                    .sorted()
+                    .toList();
+        }
+    }
+
+    private String removeMissingAndDuplicateTopicBlocks(String index, Set<String> actualTopics) {
+        String[] lines = nullToEmpty(index).split("\\R", -1);
+        List<String> kept = new ArrayList<>();
+        Set<String> seenTopics = new LinkedHashSet<>();
+        boolean skipping = false;
+        for (String line : lines) {
+            String topicPath = parseTopicPathLine(line);
+            if (topicPath != null) {
+                if (!actualTopics.contains(topicPath) || seenTopics.contains(topicPath)) {
+                    skipping = true;
+                    trimTrailingBlankLines(kept);
+                    continue;
+                }
+                skipping = false;
+                seenTopics.add(topicPath);
+                kept.add(line);
+                continue;
+            }
+            if (skipping) {
+                continue;
+            }
+            kept.add(line);
+        }
+        trimTrailingBlankLines(kept);
+        return String.join("\n", kept) + "\n";
+    }
+
+    private String defaultTopicIndexEntry(String topicPath) {
+        String stem = fileStem(topicPath);
+        String title = stem.replace('-', ' ').replace('_', ' ');
+        return "- `" + topicPath + "`\n"
+                + "  - description: " + title + "\n"
+                + "  - keywords: " + stem.replace('-', ',').replace('_', ',') + "\n";
+    }
+
+    private String ensureIndexHeader(String index) {
+        if (!StringUtils.hasText(index)) {
+            return "# MEMORY Index\n\n## Topics\n";
+        }
+        String value = index.trim();
+        if (!value.contains("## Topics")) {
+            value = value + "\n\n## Topics";
+        }
+        return value + "\n";
+    }
+
+    private String parseTopicPathLine(String line) {
+        String trimmed = line == null ? "" : line.trim();
+        if (!trimmed.startsWith("- `")) {
+            return null;
+        }
+        int start = trimmed.indexOf('`');
+        int end = trimmed.indexOf('`', start + 1);
+        if (start < 0 || end <= start) {
+            return null;
+        }
+        String path = trimmed.substring(start + 1, end);
+        return path.startsWith("topics/") && path.endsWith(".md") ? path : null;
+    }
+
+    private void removeTopicFromIndex(String topicPath) {
+        if (!topicPath.startsWith("topics/") || !topicPath.endsWith(".md")) {
+            return;
+        }
+        Path indexPath = memoryRoot.resolve(INDEX_FILE);
+        String index = readStringIfExists(indexPath);
+        if (!StringUtils.hasText(index) || !index.contains("`" + topicPath + "`")) {
+            return;
+        }
+        writeFile(indexPath, removeTopicBlock(index, topicPath));
+    }
+
+    private String removeTopicBlock(String index, String topicPath) {
+        String[] lines = nullToEmpty(index).split("\\R", -1);
+        List<String> kept = new ArrayList<>();
+        boolean skipping = false;
+        for (String line : lines) {
+            if (topicPath.equals(parseTopicPathLine(line))) {
+                skipping = true;
+                trimTrailingBlankLines(kept);
+                continue;
+            }
+            if (skipping) {
+                if (parseTopicPathLine(line) != null) {
+                    skipping = false;
+                    kept.add(line);
+                }
+                continue;
+            }
+            kept.add(line);
+        }
+        trimTrailingBlankLines(kept);
+        return String.join("\n", kept) + "\n";
+    }
+
+    private void trimTrailingBlankLines(List<String> lines) {
+        while (!lines.isEmpty() && lines.get(lines.size() - 1).isBlank()) {
+            lines.remove(lines.size() - 1);
+        }
+    }
+
+    private String trimEnd(String value) {
+        return nullToEmpty(value).replaceFirst("\\s+$", "");
     }
 
     private List<MemoryFileResponse> selectTopicFiles(String memoryIndex, String question) {
