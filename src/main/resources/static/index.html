@@ -41,6 +41,10 @@
                     <span class="nav-icon">◇</span>
                     <span>Skills</span>
                 </button>
+                <button class="nav-item" id="tracesPageBtn" type="button">
+                    <span class="nav-icon">◷</span>
+                    <span>执行观察</span>
+                </button>
             </nav>
 
             <div class="side-status">
@@ -350,6 +354,61 @@
                     <aside class="skill-detail-panel">
                         <div class="block-heading">SKILL.md</div>
                         <div id="skillDetail" class="history-detail-empty">选择一个 Skill 查看内容。</div>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="page" id="tracesPage">
+                <header class="page-header">
+                    <div>
+                        <p class="eyebrow">Agent Observability</p>
+                        <h1>执行观察</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="accent-btn" id="refreshTracesBtn" type="button">刷新 Trace</button>
+                    </div>
+                </header>
+
+                <section class="history-filters">
+                    <div class="field">
+                        <label for="traceKeyword">关键词</label>
+                        <input id="traceKeyword" type="search" placeholder="traceId / sessionId / 用户输入">
+                    </div>
+                    <div class="field">
+                        <label for="traceStatus">状态</label>
+                        <select id="traceStatus">
+                            <option value="all">全部</option>
+                            <option value="RUNNING">RUNNING</option>
+                            <option value="SUCCESS">SUCCESS</option>
+                            <option value="FAILED">FAILED</option>
+                        </select>
+                    </div>
+                    <div class="field compact">
+                        <label for="tracePageSize">每页</label>
+                        <select id="tracePageSize">
+                            <option value="10">10</option>
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                </section>
+
+                <div class="trace-layout">
+                    <section class="trace-list-panel">
+                        <div class="table-header">
+                            <span id="traceResultCount">0 条 Trace</span>
+                            <span id="tracePageInfo">第 1 页</span>
+                        </div>
+                        <div class="trace-list" id="traceList"></div>
+                        <div class="pagination">
+                            <button class="secondary-btn" id="prevTracePageBtn" type="button">上一页</button>
+                            <button class="secondary-btn" id="nextTracePageBtn" type="button">下一页</button>
+                        </div>
+                    </section>
+
+                    <aside class="trace-detail-panel">
+                        <div class="block-heading">Trace 详情</div>
+                        <div id="traceDetail" class="history-detail-empty">选择一条 Trace 查看执行链路。</div>
                     </aside>
                 </div>
             </section>

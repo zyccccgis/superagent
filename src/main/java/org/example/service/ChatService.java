@@ -39,10 +39,14 @@ public class ChatService {
 
     private final ToolSystemService toolSystemService;
     private final SkillService skillService;
+    private final AgentTraceService traceService;
 
-    public ChatService(ToolSystemService toolSystemService, SkillService skillService) {
+    public ChatService(ToolSystemService toolSystemService,
+                       SkillService skillService,
+                       AgentTraceService traceService) {
         this.toolSystemService = toolSystemService;
         this.skillService = skillService;
+        this.traceService = traceService;
     }
 
     /**
@@ -134,22 +138,29 @@ public class ChatService {
      * @param systemPrompt 系统提示词
      * @return 配置好的 ReactAgent
      */
-    public ReactAgent createReactAgent(DashScopeChatModel chatModel, String systemPrompt) {
+    public ReactAgent createReactAgent(DashScopeChatModel chatModel, String systemPrompt, String traceId) {
         return ReactAgent.builder()
                 .name("intelligent_assistant")
                 .model(chatModel)
                 .systemPrompt(systemPrompt)
-                .methodTools(toolSystemService.buildLocalToolObjects())
-                .tools(buildToolCallbacks())
+                .tools(buildToolCallbacks(traceId))
                 .hooks(createSafetyHooks())
                 .build();
     }
 
-    private ToolCallback[] buildToolCallbacks() {
+    private ToolCallback[] buildToolCallbacks(String traceId) {
         List<ToolCallback> callbacks = new ArrayList<>();
-        callbacks.addAll(List.of(toolSystemService.getMcpToolCallbacks()));
-        callbacks.addAll(List.of(skillService.buildSkillToolCallbacks()));
+        callbacks.addAll(wrapCallbacks(toolSystemService.getLocalToolCallbacks(), traceId, "LOCAL"));
+        callbacks.addAll(wrapCallbacks(toolSystemService.getMcpToolCallbacks(), traceId, "MCP"));
+        callbacks.addAll(wrapCallbacks(skillService.buildSkillToolCallbacks(), traceId, "SKILL"));
         return callbacks.toArray(ToolCallback[]::new);
+    }
+
+    private List<ToolCallback> wrapCallbacks(ToolCallback[] callbacks, String traceId, String toolSource) {
+        return List.of(callbacks).stream()
+                .map(callback -> new ObservedToolCallback(callback, traceService, traceId, toolSource))
+                .map(ToolCallback.class::cast)
+                .toList();
     }
 
     private List<Hook> createSafetyHooks() {

@@ -11,11 +11,16 @@ class SuperBizConsole {
         this.mcpServers = [];
         this.mcpTools = [];
         this.skills = [];
+        this.traces = [];
+        this.selectedTraceId = null;
         this.toolsView = 'local';
         this.selectedSkillName = null;
         this.selectedRagDocId = null;
         this.currentPage = 1;
         this.pageSize = 8;
+        this.tracePage = 1;
+        this.tracePageSizeValue = 20;
+        this.traceTotal = 0;
         this.memoryTotal = 0;
         this.selectedHistoryId = null;
         this.isBusy = false;
@@ -48,6 +53,8 @@ class SuperBizConsole {
             { method: 'GET', path: '/api/mcp/tools', purpose: '查询当前 MCP 工具快照' },
             { method: 'GET', path: '/api/skills', purpose: '查询已安装 Skills' },
             { method: 'POST', path: '/api/skills/install', purpose: '从 ZIP URL 安装 Skill' },
+            { method: 'GET', path: '/api/traces', purpose: '查询 Agent 执行 Trace 列表' },
+            { method: 'GET', path: '/api/traces/{traceId}', purpose: '查询 Agent 执行 Trace 详情' },
             { method: 'GET', path: '/milvus/health', purpose: '检测向量库健康状态' }
         ];
 
@@ -62,11 +69,13 @@ class SuperBizConsole {
         this.ragPageBtn = document.getElementById('ragPageBtn');
         this.toolsPageBtn = document.getElementById('toolsPageBtn');
         this.skillsPageBtn = document.getElementById('skillsPageBtn');
+        this.tracesPageBtn = document.getElementById('tracesPageBtn');
         this.chatPage = document.getElementById('chatPage');
         this.historyPage = document.getElementById('historyPage');
         this.ragPage = document.getElementById('ragPage');
         this.toolsPage = document.getElementById('toolsPage');
         this.skillsPage = document.getElementById('skillsPage');
+        this.tracesPage = document.getElementById('tracesPage');
         this.sidebarSessionId = document.getElementById('sidebarSessionId');
         this.copySessionBtn = document.getElementById('copySessionBtn');
         this.newSessionBtn = document.getElementById('newSessionBtn');
@@ -136,6 +145,16 @@ class SuperBizConsole {
         this.skillsMeta = document.getElementById('skillsMeta');
         this.skillsList = document.getElementById('skillsList');
         this.skillDetail = document.getElementById('skillDetail');
+        this.refreshTracesBtn = document.getElementById('refreshTracesBtn');
+        this.traceKeyword = document.getElementById('traceKeyword');
+        this.traceStatus = document.getElementById('traceStatus');
+        this.tracePageSize = document.getElementById('tracePageSize');
+        this.traceResultCount = document.getElementById('traceResultCount');
+        this.tracePageInfo = document.getElementById('tracePageInfo');
+        this.traceList = document.getElementById('traceList');
+        this.traceDetail = document.getElementById('traceDetail');
+        this.prevTracePageBtn = document.getElementById('prevTracePageBtn');
+        this.nextTracePageBtn = document.getElementById('nextTracePageBtn');
         this.toast = document.getElementById('toast');
     }
 
@@ -145,6 +164,7 @@ class SuperBizConsole {
         this.ragPageBtn.addEventListener('click', () => this.switchPage('rag'));
         this.toolsPageBtn.addEventListener('click', () => this.switchPage('tools'));
         this.skillsPageBtn.addEventListener('click', () => this.switchPage('skills'));
+        this.tracesPageBtn.addEventListener('click', () => this.switchPage('traces'));
         this.copySessionBtn.addEventListener('click', () => this.copySessionId());
         this.newSessionBtn.addEventListener('click', () => this.startNewSession());
         this.clearBackendSessionBtn.addEventListener('click', () => this.clearBackendSession());
@@ -212,6 +232,20 @@ class SuperBizConsole {
             event.preventDefault();
             this.installSkill();
         });
+        this.refreshTracesBtn.addEventListener('click', () => this.refreshTraces(true));
+        [this.traceKeyword, this.traceStatus].forEach(input => {
+            input.addEventListener('input', () => {
+                this.tracePage = 1;
+                this.refreshTraces(false);
+            });
+        });
+        this.tracePageSize.addEventListener('change', () => {
+            this.tracePageSizeValue = Number(this.tracePageSize.value);
+            this.tracePage = 1;
+            this.refreshTraces(false);
+        });
+        this.prevTracePageBtn.addEventListener('click', () => this.moveTracePage(-1));
+        this.nextTracePageBtn.addEventListener('click', () => this.moveTracePage(1));
         this.ragUploadZone.addEventListener('dragover', (event) => {
             event.preventDefault();
             this.ragUploadZone.classList.add('dragover');
@@ -235,6 +269,7 @@ class SuperBizConsole {
         this.renderMcpServers();
         this.renderMcpTools();
         this.renderSkills();
+        this.renderTraces();
         this.updateSessionDisplay();
         this.updateChatMeta();
     }
@@ -244,16 +279,19 @@ class SuperBizConsole {
         const showRag = page === 'rag';
         const showTools = page === 'tools';
         const showSkills = page === 'skills';
-        this.chatPage.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills);
+        const showTraces = page === 'traces';
+        this.chatPage.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills && !showTraces);
         this.historyPage.classList.toggle('active', showHistory);
         this.ragPage.classList.toggle('active', showRag);
         this.toolsPage.classList.toggle('active', showTools);
         this.skillsPage.classList.toggle('active', showSkills);
-        this.chatPageBtn.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills);
+        this.tracesPage.classList.toggle('active', showTraces);
+        this.chatPageBtn.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills && !showTraces);
         this.historyPageBtn.classList.toggle('active', showHistory);
         this.ragPageBtn.classList.toggle('active', showRag);
         this.toolsPageBtn.classList.toggle('active', showTools);
         this.skillsPageBtn.classList.toggle('active', showSkills);
+        this.tracesPageBtn.classList.toggle('active', showTraces);
         if (showHistory) {
             this.captureCurrentSessionToHistory();
             this.refreshMemoryFiles();
@@ -267,6 +305,9 @@ class SuperBizConsole {
         }
         if (showSkills) {
             this.refreshSkills(false);
+        }
+        if (showTraces) {
+            this.refreshTraces(false);
         }
     }
 
@@ -608,7 +649,11 @@ class SuperBizConsole {
             button.textContent = String(page);
             button.addEventListener('click', () => {
                 this.currentPage = page;
-                this.renderHistoryPage();
+                if (this.memoryView === 'short') {
+                    this.refreshMemoryFiles(false);
+                } else {
+                    this.renderHistoryPage();
+                }
             });
             this.pageNumbers.appendChild(button);
         }
@@ -1481,6 +1526,180 @@ class SuperBizConsole {
         }
     }
 
+    async refreshTraces(showToast = false) {
+        try {
+            const params = new URLSearchParams({
+                page: String(this.tracePage),
+                pageSize: String(this.tracePageSizeValue),
+                status: this.traceStatus.value || 'all'
+            });
+            const keyword = this.traceKeyword.value.trim();
+            if (keyword) params.set('keyword', keyword);
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/traces?${params.toString()}`);
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || 'Trace 列表查询失败');
+            }
+            this.traces = payload.data.items || [];
+            this.traceTotal = payload.data.total || 0;
+            this.renderTraces();
+            if (showToast) this.showToast('Trace 列表已刷新');
+        } catch (error) {
+            this.traceList.innerHTML = `<div class="history-detail-empty">无法加载 Trace：${this.escapeHtml(error.message)}</div>`;
+            if (showToast) this.showToast(`Trace 加载失败：${error.message}`);
+        }
+    }
+
+    renderTraces() {
+        if (!this.traceList || !this.traceResultCount) return;
+        const totalPages = Math.max(1, Math.ceil(this.traceTotal / this.tracePageSizeValue));
+        this.traceResultCount.textContent = `${this.traceTotal} 条 Trace`;
+        this.tracePageInfo.textContent = `第 ${this.tracePage} / ${totalPages} 页`;
+        this.prevTracePageBtn.disabled = this.tracePage <= 1;
+        this.nextTracePageBtn.disabled = this.tracePage >= totalPages;
+        this.traceList.innerHTML = this.traces.map(trace => `
+            <article class="trace-card ${trace.traceId === this.selectedTraceId ? 'active' : ''}" data-trace-id="${this.escapeAttr(trace.traceId)}">
+                <div class="trace-card-top">
+                    <span class="trace-status ${String(trace.status || '').toLowerCase()}">${this.escapeHtml(trace.status || '-')}</span>
+                    <strong>${this.escapeHtml(this.formatDuration(trace.durationMs))}</strong>
+                </div>
+                <div class="trace-question">${this.escapeHtml(this.truncate(trace.userInput || '-', 96))}</div>
+                <div class="trace-card-grid">
+                    <span>Session</span><strong>${this.escapeHtml(this.truncate(trace.sessionId || '-', 28))}</strong>
+                    <span>开始</span><strong>${this.formatDate(trace.startTime)}</strong>
+                    <span>模型</span><strong>${this.escapeHtml(trace.modelName || '-')}</strong>
+                </div>
+            </article>
+        `).join('') || '<div class="history-detail-empty">还没有 Trace 记录。</div>';
+
+        this.traceList.querySelectorAll('.trace-card').forEach(card => {
+            card.addEventListener('click', () => this.loadTraceDetail(card.dataset.traceId));
+        });
+    }
+
+    async loadTraceDetail(traceId) {
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/traces/${encodeURIComponent(traceId)}`);
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || 'Trace 详情查询失败');
+            }
+            this.selectedTraceId = traceId;
+            this.renderTraceDetail(payload.data);
+            this.renderTraces();
+        } catch (error) {
+            this.showToast(`Trace 详情加载失败：${error.message}`);
+        }
+    }
+
+    renderTraceDetail(detail) {
+        const trace = detail.trace || {};
+        const steps = detail.steps || [];
+        const toolCalls = detail.toolCalls || [];
+        const toolCallsByStep = new Map();
+        toolCalls.forEach(call => {
+            const items = toolCallsByStep.get(call.stepId) || [];
+            items.push(call);
+            toolCallsByStep.set(call.stepId, items);
+        });
+        const toolSuccess = toolCalls.filter(call => call.status === 'SUCCESS').length;
+        const toolFailed = toolCalls.filter(call => call.status === 'FAILED').length;
+        this.traceDetail.innerHTML = `
+            <div class="trace-detail-shell">
+                <section class="trace-overview">
+                    <div class="trace-overview-main">
+                        <span class="trace-status ${String(trace.status || '').toLowerCase()}">${this.escapeHtml(trace.status || '-')}</span>
+                        <div>
+                            <div class="trace-detail-title">${this.escapeHtml(this.truncate(trace.userInput || '-', 120))}</div>
+                            <div class="trace-id-line">${this.escapeHtml(trace.traceId || '-')}</div>
+                        </div>
+                    </div>
+                    <div class="trace-metric-grid">
+                        <div><span>总耗时</span><strong>${this.escapeHtml(this.formatDuration(trace.durationMs))}</strong></div>
+                        <div><span>步骤</span><strong>${steps.length}</strong></div>
+                        <div><span>工具</span><strong>${toolCalls.length}</strong></div>
+                        <div><span>失败</span><strong>${toolFailed}</strong></div>
+                        <div><span>模型</span><strong>${this.escapeHtml(trace.modelName || '-')}</strong></div>
+                    </div>
+                    <div class="trace-user-input">${this.escapeHtml(trace.userInput || '')}</div>
+                    ${trace.errorMessage ? `<div class="mcp-error">${this.escapeHtml(trace.errorMessage)}</div>` : ''}
+                </section>
+
+                <div class="trace-detail-columns">
+                    <section class="trace-column">
+                        <div class="trace-section-title">
+                            <strong>步骤时间线</strong>
+                            <span>${steps.length} steps</span>
+                        </div>
+                        <div class="trace-timeline">
+                            ${steps.map((step, index) => this.renderTraceStep(step, toolCallsByStep.get(step.id) || [], index + 1)).join('') || '<div class="history-detail-empty">没有步骤记录。</div>'}
+                        </div>
+                    </section>
+
+                    <section class="trace-column">
+                        <div class="trace-section-title">
+                            <strong>工具调用</strong>
+                            <span>${toolSuccess} success · ${toolFailed} failed</span>
+                        </div>
+                        <div class="trace-tool-list">
+                            ${toolCalls.map(call => this.renderTraceToolCall(call)).join('') || '<div class="history-detail-empty">本轮没有调用工具。</div>'}
+                        </div>
+                    </section>
+                </div>
+            </div>
+        `;
+    }
+
+    renderTraceStep(step, toolCalls, index) {
+        return `
+            <section class="trace-step">
+                <div class="trace-step-head">
+                    <div class="trace-step-title">
+                        <span class="trace-index">${index}</span>
+                        <strong>${this.escapeHtml(step.stepType || '-')}</strong>
+                        <span>${this.escapeHtml(step.stepName || '-')}</span>
+                    </div>
+                    <div class="trace-step-meta">
+                        <span class="trace-status ${String(step.status || '').toLowerCase()}">${this.escapeHtml(step.status || '-')}</span>
+                        <span class="trace-duration">${this.escapeHtml(this.formatDuration(step.durationMs))}</span>
+                    </div>
+                </div>
+                <div class="trace-step-stats">
+                    <span>input ${this.countWords(step.inputSummary || '')} chars</span>
+                    <span>output ${this.countWords(step.outputSummary || '')} chars</span>
+                    <span>${toolCalls.length} tools</span>
+                </div>
+                ${step.inputSummary ? `<details class="trace-collapse"><summary>输入摘要</summary><pre class="trace-summary">${this.escapeHtml(step.inputSummary)}</pre></details>` : ''}
+                ${step.outputSummary ? `<details class="trace-collapse"><summary>输出摘要</summary><pre class="trace-summary">${this.escapeHtml(step.outputSummary)}</pre></details>` : ''}
+                ${step.errorMessage ? `<div class="mcp-error">${this.escapeHtml(step.errorMessage)}</div>` : ''}
+            </section>
+        `;
+    }
+
+    renderTraceToolCall(call) {
+        return `
+            <article class="trace-tool-call">
+                <div class="trace-tool-head">
+                    <div>
+                        <strong>${this.escapeHtml(call.toolName || '-')}</strong>
+                        <span>${this.escapeHtml(call.toolSource || 'TOOL')}</span>
+                    </div>
+                    <div class="trace-step-meta">
+                        <span class="trace-status ${String(call.status || '').toLowerCase()}">${this.escapeHtml(call.status || '-')}</span>
+                        <span class="trace-duration">${this.escapeHtml(this.formatDuration(call.durationMs))}</span>
+                    </div>
+                </div>
+                ${call.requestJson ? `<details class="trace-collapse"><summary>请求参数</summary><pre class="trace-summary">${this.escapeHtml(call.requestJson)}</pre></details>` : ''}
+                ${call.responseSummary ? `<details class="trace-collapse"><summary>响应摘要</summary><pre class="trace-summary">${this.escapeHtml(call.responseSummary)}</pre></details>` : ''}
+                ${call.errorMessage ? `<div class="mcp-error">${this.escapeHtml(call.errorMessage)}</div>` : ''}
+            </article>
+        `;
+    }
+
+    moveTracePage(delta) {
+        const totalPages = Math.max(1, Math.ceil(this.traceTotal / this.tracePageSizeValue));
+        this.tracePage = Math.min(totalPages, Math.max(1, this.tracePage + delta));
+        this.refreshTraces(false);
+    }
+
     tokenize(text) {
         return String(text || '')
             .toLowerCase()
@@ -1552,6 +1771,14 @@ class SuperBizConsole {
 
     truncate(text, length) {
         return text.length > length ? `${text.slice(0, length)}...` : text;
+    }
+
+    formatDuration(ms) {
+        if (ms == null || Number.isNaN(Number(ms))) return '-';
+        const value = Number(ms);
+        if (value < 1000) return `${value}ms`;
+        if (value < 60000) return `${Math.round(value / 100) / 10}s`;
+        return `${Math.floor(value / 60000)}m ${Math.round((value % 60000) / 1000)}s`;
     }
 
     countWords(text) {

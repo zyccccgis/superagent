@@ -9,6 +9,7 @@ import com.alibaba.cloud.ai.graph.streaming.StreamingOutput;
 import org.example.dto.MemoryContext;
 import org.example.dto.SseMessage;
 import org.example.service.AgentExecutionMemoryService;
+import org.example.service.AgentTraceService;
 import org.example.service.ChatService;
 import org.example.service.ChatSessionService;
 import org.example.service.ChatStreamService;
@@ -35,17 +36,20 @@ public class SseChatStreamService implements ChatStreamService {
     private final ChatSessionService chatSessionService;
     private final MemoryService memoryService;
     private final AgentExecutionMemoryService executionMemoryService;
+    private final AgentTraceService traceService;
     private final AsyncTaskExecutor chatTaskExecutor;
 
     public SseChatStreamService(ChatService chatService,
                                 ChatSessionService chatSessionService,
                                 MemoryService memoryService,
                                 AgentExecutionMemoryService executionMemoryService,
+                                AgentTraceService traceService,
                                 AsyncTaskExecutor chatTaskExecutor) {
         this.chatService = chatService;
         this.chatSessionService = chatSessionService;
         this.memoryService = memoryService;
         this.executionMemoryService = executionMemoryService;
+        this.traceService = traceService;
         this.chatTaskExecutor = chatTaskExecutor;
     }
 
@@ -64,7 +68,17 @@ public class SseChatStreamService implements ChatStreamService {
             List<Map<String, String>> history = session.getHistory();
             logger.info("ReactAgent 会话历史消息对数: {}", history.size() / 2);
             long startedAt = System.currentTimeMillis();
-            MemoryContext memoryContext = memoryService.loadContext(session.getSessionId(), question, history);
+            String traceId = traceService.startTrace(session.getSessionId(), question, DashScopeChatModel.DEFAULT_MODEL_NAME);
+            Long memoryStepId = traceService.startStep(traceId, "MEMORY_LOAD", "loadContext", question);
+            MemoryContext memoryContext;
+            try {
+                memoryContext = memoryService.loadContext(session.getSessionId(), question, history);
+                traceService.finishStep(memoryStepId, summarizeMemoryContext(memoryContext));
+            } catch (RuntimeException e) {
+                traceService.failStep(memoryStepId, e);
+                traceService.failTrace(traceId, e);
+                throw e;
+            }
 
             DashScopeApi dashScopeApi = chatService.createDashScopeApi();
             DashScopeChatModel chatModel = chatService.createStandardChatModel(dashScopeApi);
@@ -72,14 +86,15 @@ public class SseChatStreamService implements ChatStreamService {
 
             logger.info("开始 ReactAgent 流式对话（支持自动工具调用）");
             String systemPrompt = chatService.buildSystemPrompt(memoryContext);
-            ReactAgent agent = chatService.createReactAgent(chatModel, systemPrompt);
+            ReactAgent agent = chatService.createReactAgent(chatModel, systemPrompt, traceId);
             StringBuilder fullAnswerBuilder = new StringBuilder();
+            Long agentStepId = traceService.startStep(traceId, "AGENT_RUN", "ReactAgent.stream", question);
 
             Flux<NodeOutput> stream = agent.stream(question);
             stream.subscribe(
                     output -> handleStreamOutput(output, emitter, fullAnswerBuilder),
-                    error -> handleStreamError(error, emitter, session.getSessionId(), question, memoryContext, startedAt),
-                    () -> handleStreamComplete(session, question, emitter, fullAnswerBuilder, memoryContext, startedAt)
+                    error -> handleStreamError(error, emitter, session.getSessionId(), question, memoryContext, startedAt, traceId, agentStepId),
+                    () -> handleStreamComplete(session, question, emitter, fullAnswerBuilder, memoryContext, startedAt, traceId, agentStepId)
             );
         } catch (Exception e) {
             logger.error("ReactAgent 对话初始化失败", e);
@@ -119,8 +134,12 @@ public class SseChatStreamService implements ChatStreamService {
                                    String sessionId,
                                    String question,
                                    MemoryContext memoryContext,
-                                   long startedAt) {
+                                   long startedAt,
+                                   String traceId,
+                                   Long agentStepId) {
         logger.error("ReactAgent 流式对话失败", error);
+        traceService.failStep(agentStepId, error);
+        traceService.failTrace(traceId, error);
         executionMemoryService.recordAsync(sessionId, question, null, memoryContext, "FAILED", error.getMessage(), startedAt);
         try {
             emitter.send(SseEmitter.event()
@@ -137,11 +156,15 @@ public class SseChatStreamService implements ChatStreamService {
                                       SseEmitter emitter,
                                       StringBuilder fullAnswerBuilder,
                                       MemoryContext memoryContext,
-                                      long startedAt) {
+                                      long startedAt,
+                                      String traceId,
+                                      Long agentStepId) {
         try {
             String fullAnswer = fullAnswerBuilder.toString();
             logger.info("ReactAgent 流式对话完成 - SessionId: {}, 答案长度: {}", session.getSessionId(), fullAnswer.length());
 
+            traceService.finishStep(agentStepId, fullAnswer);
+            traceService.finishTrace(traceId);
             session.addMessage(question, fullAnswer);
             executionMemoryService.recordAsync(session.getSessionId(), question, fullAnswer, memoryContext, "SUCCESS", null, startedAt);
             logger.info("已更新会话短期记忆 - SessionId: {}", session.getSessionId());
@@ -154,6 +177,16 @@ public class SseChatStreamService implements ChatStreamService {
             logger.error("发送完成消息失败", e);
             emitter.completeWithError(e);
         }
+    }
+
+    private String summarizeMemoryContext(MemoryContext memoryContext) {
+        if (memoryContext == null) {
+            return "未加载记忆上下文";
+        }
+        int topicCount = memoryContext.getTopicFiles() == null ? 0 : memoryContext.getTopicFiles().size();
+        int indexLength = memoryContext.getMemoryIndex() == null ? 0 : memoryContext.getMemoryIndex().length();
+        int shortLength = memoryContext.getShortMemory() == null ? 0 : memoryContext.getShortMemory().length();
+        return "topicFiles=" + topicCount + ", memoryIndexChars=" + indexLength + ", shortMemoryChars=" + shortLength;
     }
 
     private void sendErrorAndComplete(SseEmitter emitter, Exception e) {

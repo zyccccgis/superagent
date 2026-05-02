@@ -14,6 +14,7 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -105,6 +106,10 @@ public class ToolSystemService {
                 .filter(definition -> enabled.contains(definition.toolName()))
                 .map(ToolDefinition::bean)
                 .toArray();
+    }
+
+    public ToolCallback[] getLocalToolCallbacks() {
+        return ToolCallbacks.from(buildLocalToolObjects());
     }
 
     public ToolCallback[] getMcpToolCallbacks() {

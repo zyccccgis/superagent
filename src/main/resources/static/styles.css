@@ -899,7 +899,9 @@ h1 {
 .tools-detail-panel,
 .mcp-tools-panel,
 .skills-list-panel,
-.skill-detail-panel {
+.skill-detail-panel,
+.trace-list-panel,
+.trace-detail-panel {
     min-height: 0;
     overflow: hidden;
     display: flex;
@@ -1123,8 +1125,357 @@ h1 {
 
 .tools-detail-panel,
 .mcp-tools-panel,
-.skill-detail-panel {
+.skill-detail-panel,
+.trace-detail-panel {
     padding: 16px;
+}
+
+.trace-layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(340px, 0.72fr) minmax(0, 1.28fr);
+    gap: 16px;
+}
+
+.trace-list-panel,
+.trace-detail-panel {
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.trace-list {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #fbfcfe;
+}
+
+.trace-card {
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 12px;
+    cursor: pointer;
+}
+
+.trace-card:hover,
+.trace-card.active {
+    border-color: #0f766e;
+    background: #f0fdfa;
+}
+
+.trace-card-top,
+.trace-step-head,
+.trace-tool-head,
+.trace-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.trace-card-top {
+    margin-bottom: 10px;
+}
+
+.trace-card-top strong {
+    color: #17212b;
+    font-weight: 900;
+}
+
+.trace-question {
+    color: #17212b;
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.trace-card-grid {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 5px 8px;
+    margin-top: 10px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.trace-card-grid strong {
+    color: #334155;
+    font-weight: 750;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trace-status {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.trace-status.success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.trace-status.failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.trace-status.running {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.trace-detail-shell {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.trace-overview {
+    flex-shrink: 0;
+    border-bottom: 1px solid #e5eaf0;
+    padding-bottom: 12px;
+}
+
+.trace-overview-main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.trace-detail-title {
+    color: #17212b;
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.trace-id-line {
+    margin-top: 4px;
+    color: #64748b;
+    font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    overflow-wrap: anywhere;
+}
+
+.trace-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.trace-metric-grid div {
+    min-width: 0;
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #fbfcfe;
+    padding: 9px 10px;
+}
+
+.trace-metric-grid span {
+    display: block;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.trace-metric-grid strong {
+    display: block;
+    margin-top: 5px;
+    color: #17212b;
+    font-size: 14px;
+    font-weight: 900;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trace-user-input {
+    margin: 12px 0;
+    padding: 12px;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.trace-detail-columns {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.86fr);
+    gap: 12px;
+}
+
+.trace-column {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #fbfcfe;
+    padding: 12px;
+}
+
+.trace-section-title {
+    flex-shrink: 0;
+    margin-bottom: 10px;
+}
+
+.trace-section-title strong {
+    color: #17212b;
+    font-size: 14px;
+}
+
+.trace-timeline,
+.trace-tool-list {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 2px;
+}
+
+.trace-step {
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 12px;
+}
+
+.trace-step-title,
+.trace-step-meta {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trace-step-title {
+    flex: 1;
+}
+
+.trace-step-title span:not(.trace-index) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trace-index {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #0f766e;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 900;
+    flex-shrink: 0;
+}
+
+.trace-step-head strong {
+    color: #17212b;
+    font-size: 13px;
+}
+
+.trace-duration {
+    color: #64748b;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.trace-step-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.trace-step-stats span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: #eef2f6;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.trace-collapse {
+    margin-top: 8px;
+}
+
+.trace-collapse summary {
+    cursor: pointer;
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 900;
+    user-select: none;
+}
+
+.trace-summary {
+    max-height: 220px;
+    overflow: auto;
+    margin: 7px 0 0;
+    padding: 10px;
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #334155;
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.trace-tool-call {
+    border: 1px solid #e5eaf0;
+    border-left: 3px solid #0f766e;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 12px;
+}
+
+.trace-tool-head strong {
+    display: block;
+    color: #17212b;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.trace-tool-head span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
 }
 
 .mcp-panel-header {
@@ -1484,7 +1835,9 @@ h1 {
     .rag-layout,
     .tools-layout,
     .mcp-layout,
-    .skills-layout {
+    .skills-layout,
+    .trace-layout,
+    .trace-detail-columns {
         grid-template-columns: 1fr;
         overflow: visible;
     }
@@ -1496,8 +1849,15 @@ h1 {
     .tools-detail-panel,
     .mcp-tools-panel,
     .skills-list-panel,
-    .skill-detail-panel {
+    .skill-detail-panel,
+    .trace-list-panel,
+    .trace-detail-panel,
+    .trace-column {
         overflow: visible;
+    }
+
+    .trace-metric-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .history-detail-panel {
@@ -1544,7 +1904,8 @@ h1 {
     #historyPage,
     #ragPage,
     #toolsPage,
-    #skillsPage {
+    #skillsPage,
+    #tracesPage {
         overflow: visible;
     }
 
@@ -1558,13 +1919,22 @@ h1 {
     .tools-tab-page,
     .mcp-layout,
     .skills-layout,
+    .trace-layout,
+    .trace-detail-columns,
     .tools-list-panel,
     .tools-detail-panel,
     .mcp-tools-panel,
     .skills-list-panel,
-    .skill-detail-panel {
+    .skill-detail-panel,
+    .trace-list-panel,
+    .trace-detail-panel,
+    .trace-column {
         height: auto;
         overflow: visible;
+    }
+
+    .trace-metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .history-detail-empty {

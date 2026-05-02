@@ -37,3 +37,15 @@
 - `topics/agent-skills-and-technical-focus.md`
   - description: 记录 Agent 当前启用的工具技能、技术栈专长、项目架构约束及可观测性协同逻辑
   - keywords: agent skills,java,spring boot,milvus,observability,toolchain
+
+- `topics/frontend-structure.md`
+  - description: 记录 Spring Boot 项目中前端静态资源的标准存放路径和映射规则
+  - keywords: spring boot,static resources,frontend,path mapping,classpath
+
+- `topics/payment-service-high-cpu-troubleshooting.md`
+  - description: 记录 payment-service 高 CPU 问题的根因模式、诊断线索和标准化排查步骤
+  - keywords: payment-service,cpu,thread-dump,jvm,production-troubleshooting
+
+- `topics/disk-usage-troubleshooting.md`
+  - description: 记录磁盘使用过高问题的标准化排查路径、关键诱因及本项目特有配置风险点
+  - keywords: disk usage,log rotation,spring boot,milvus,rag,tmp cleanup

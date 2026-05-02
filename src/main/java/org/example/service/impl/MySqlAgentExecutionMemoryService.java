@@ -1,6 +1,7 @@
 package org.example.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.example.dto.AgentExecutionMemoryListResponse;
 import org.example.dto.AgentExecutionMemoryRequest;
 import org.example.dto.AgentExecutionMemoryResponse;
@@ -181,19 +182,15 @@ public class MySqlAgentExecutionMemoryService implements AgentExecutionMemorySer
                                                  Integer pageSize) {
         int resolvedPage = page == null || page < 1 ? 1 : page;
         int resolvedPageSize = pageSize == null || pageSize < 1 ? 10 : Math.min(pageSize, 100);
-        LambdaQueryWrapper<AgentExecutionMemory> countWrapper = buildQueryWrapper(sessionId, status, keyword);
-        Long total = memoryMapper.selectCount(countWrapper);
-        int offset = (resolvedPage - 1) * resolvedPageSize;
         LambdaQueryWrapper<AgentExecutionMemory> pageWrapper = buildQueryWrapper(sessionId, status, keyword)
-                .orderByDesc(AgentExecutionMemory::getCreatedAt)
-                .last("limit " + resolvedPageSize + " offset " + offset);
-        List<AgentExecutionMemory> records = memoryMapper.selectList(pageWrapper);
+                .orderByDesc(AgentExecutionMemory::getCreatedAt);
+        Page<AgentExecutionMemory> pageResult = memoryMapper.selectPage(new Page<>(resolvedPage, resolvedPageSize), pageWrapper);
 
         AgentExecutionMemoryListResponse response = new AgentExecutionMemoryListResponse();
-        response.setItems(records.stream()
+        response.setItems(pageResult.getRecords().stream()
                 .map(AgentExecutionMemoryResponse::fromEntity)
                 .toList());
-        response.setTotal(total == null ? 0 : total);
+        response.setTotal(pageResult.getTotal());
         response.setPage(resolvedPage);
         response.setPageSize(resolvedPageSize);
         return response;
