@@ -1,0 +1,64 @@
+{
+  "skills": {
+    "claude-api": {
+      "name": "claude-api",
+      "displayName": "claude-api",
+      "description": "Build, debug, and optimize Claude API / Anthropic SDK apps. Includes prompt caching, tool use, streaming, batches, files, citations, memory, and model migration guidance.",
+      "version": "",
+      "author": "Anthropic",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills/tree/main/skills/claude-api",
+      "enabled": true,
+      "installedAt": 1777651761000,
+      "updatedAt": 1777651761000
+    },
+    "frontend-design": {
+      "name": "frontend-design",
+      "displayName": "frontend-design",
+      "description": "Create distinctive, production-grade frontend interfaces with high design quality for pages, components, dashboards, HTML/CSS layouts, and web UI polish.",
+      "version": "",
+      "author": "Anthropic",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills/tree/main/skills/frontend-design",
+      "enabled": true,
+      "installedAt": 1777651761000,
+      "updatedAt": 1777651761000
+    },
+    "mcp-builder": {
+      "name": "mcp-builder",
+      "displayName": "mcp-builder",
+      "description": "Guide for creating high-quality MCP servers that integrate external APIs or services through well-designed tools in Python or Node/TypeScript.",
+      "version": "",
+      "author": "Anthropic",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills/tree/main/skills/mcp-builder",
+      "enabled": true,
+      "installedAt": 1777651761000,
+      "updatedAt": 1777651761000
+    },
+    "skill-creator": {
+      "name": "skill-creator",
+      "displayName": "skill-creator",
+      "description": "Create new skills, modify and improve existing skills, run evaluations, benchmark performance, and optimize skill descriptions for better triggering accuracy.",
+      "version": "",
+      "author": "Anthropic",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills/tree/main/skills/skill-creator",
+      "enabled": true,
+      "installedAt": 1777651761000,
+      "updatedAt": 1777651761000
+    },
+    "webapp-testing": {
+      "name": "webapp-testing",
+      "displayName": "webapp-testing",
+      "description": "Toolkit for interacting with and testing local web applications using Playwright, including frontend verification, UI debugging, screenshots, and browser logs.",
+      "version": "",
+      "author": "Anthropic",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills/tree/main/skills/webapp-testing",
+      "enabled": true,
+      "installedAt": 1777651761000,
+      "updatedAt": 1777651761000
+    }
+  }
+}
