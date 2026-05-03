@@ -1,69 +1,136 @@
+<div align="center">
+
 # SuperBizAgent
 
-SuperBizAgent 是一个面向企业知识问答和智能运维诊断的 AI Agent 后端服务。项目基于 Spring Boot 3、Spring AI Alibaba、DashScope、Milvus 和 MySQL 构建，提供 RAG 知识库、流式对话、AIOps 任务、Agent 工具调用和记忆管理能力。
+**面向企业知识库、智能运维诊断与可扩展工具调用的 AI Agent 后端服务**
 
-它不是一个单纯的聊天接口，而是一个可落地的 Agent 服务骨架：文档可以上传并向量化，运维告警可以进入诊断任务，Agent 可以调用指标、日志、内部文档、数据库和外部检索工具，执行过程也可以沉淀为记忆。
+SuperBizAgent 是一个基于 Spring Boot 3、Spring AI Alibaba、DashScope、Milvus 与 MySQL 构建的企业级 AI Agent 服务骨架。项目围绕企业知识问答、RAG 检索增强、AIOps 诊断、工具调用、MCP 扩展、Skills 能力包与长期/短期记忆管理展开，旨在提供一个可运行、可扩展、可审计的智能业务助手后端基础设施。
 
-## 功能概览
+</div>
 
-| 模块 | 能力 |
-| --- | --- |
-| 智能对话 | 普通对话、SSE 流式对话、多轮会话、工具调用 |
-| RAG 知识库 | 文档上传、文档切分、Embedding、Milvus 向量索引、TopK 召回 |
-| AIOps 诊断 | 创建诊断任务、查询任务结果、结合指标/日志/文档进行分析 |
-| Agent 工具 | 时间工具、内部文档检索、指标查询、日志查询、MySQL 查询、外网查询 |
-| 记忆系统 | 长期记忆文件、短期执行记忆、记忆抽取、记忆压缩 |
-| 本地控制台 | Spring Boot 静态页面，可直接访问 `http://localhost:9900` |
+<p align="center">
+  <img src="https://img.shields.io/badge/Java-17-blue" />
+  <img src="https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen" />
+  <img src="https://img.shields.io/badge/Spring%20AI-1.1.0-green" />
+  <img src="https://img.shields.io/badge/Milvus-2.5.x-orange" />
+  <img src="https://img.shields.io/badge/MySQL-8.0-blue" />
+  <img src="https://img.shields.io/badge/License-Apache--2.0-lightgrey" />
+</p>
+
+---
+
+## 项目定位
+
+SuperBizAgent 不是一个简单的聊天接口，而是一个面向企业场景的 Agent 后端服务框架。
+
+它将大模型能力、企业知识库、向量检索、工具调用、运维诊断、执行记忆和 MCP 扩展统一封装为一套 Spring Boot 后端服务，适合用于构建：
+
+- 企业内部知识问答系统
+- 运维告警智能诊断系统
+- 面向日志、指标、文档和数据库的 AIOps 助手
+- 支持工具治理和记忆沉淀的 Agent 后端
+- 可接入 MCP Server 和 Skills 能力包的智能体平台原型
+
+项目已经实现从文档上传、切分、Embedding、Milvus 向量入库，到多轮对话、SSE 流式响应、工具调用、诊断任务管理、长期记忆抽取、短期记忆压缩和外部 MCP 管理的一整套基础链路。
+
+---
+
+## 功能特性
+
+| 模块 | 能力说明 |
+|---|---|
+| 智能对话 | 支持普通对话、SSE 流式对话、多轮会话、上下文维护与工具增强回答 |
+| RAG 知识库 | 支持文档上传、文本切分、Embedding、Milvus 向量索引、TopK 召回 |
+| AIOps 诊断 | 支持创建运维诊断任务，并结合指标、日志、知识库和工具结果生成分析 |
+| Agent 工具系统 | 内置时间、内部文档检索、指标查询、日志查询、MySQL 查询、公开搜索、天气地图等工具 |
+| MCP 扩展 | 支持远程 SSE / Streamable HTTP MCP Server 配置、启停、刷新与工具快照管理 |
+| Skills 能力包 | 支持通过 ZIP URL 安装 Skill，将特定任务方法论注入 Agent 系统提示词 |
+| 记忆系统 | 支持长期记忆文件、短期执行记忆、自动抽取、压缩和索引维护 |
+| 本地控制台 | 提供 Spring Boot 静态页面，可直接访问本地 Web 控制台 |
+
+---
+
+## 系统截图
+
+### 首页 / 对话控制台
+
+![Home](docs/images/对话窗口.png)
+
+### 长短期记忆系统
+
+![Memory](docs/images/长期记忆.png)
+
+![Memory](docs/images/短期记忆.png)
+
+### AIOps 诊断任务
+
+![AIOps](docs/images/aiops.png)
+
+### 工具与 MCP 管理
+
+![Tools](docs/images/tools.png)
+
+---
 
 ## 技术栈
 
-| 技术 | 当前配置 |
-| --- | --- |
-| Java | 17 |
-| Spring Boot | 3.2.0 |
-| Spring AI | 1.1.0 |
-| Spring AI Alibaba | 1.1.0.0-RC2 |
-| DashScope SDK | 2.17.0 |
-| Milvus Java SDK | 2.6.10 |
-| MyBatis Plus | 3.5.7 |
-| MySQL | 8.0.42 Docker 镜像 |
-| Milvus | 2.5.10 Docker 镜像 |
+| 类型 | 技术选型 |
+|---|---|
+| 语言 | Java 17 |
+| 后端框架 | Spring Boot 3.2.0 |
+| AI 框架 | Spring AI 1.1.0, Spring AI Alibaba 1.1.0.0-RC2 |
+| 大模型服务 | DashScope / Qwen |
+| Embedding | DashScope text-embedding-v4 |
+| 向量数据库 | Milvus |
+| 关系数据库 | MySQL 8 |
+| ORM | MyBatis Plus |
+| 流式响应 | Server-Sent Events |
+| 工具协议 | Spring AI Tool Calling, MCP |
+| 本地部署 | Docker, Docker Compose, Maven |
 
-## 系统架构
+---
 
-```text
-Client / Web UI
-      |
-      v
-Spring Boot API
-      |
-      +-- ChatController
-      |     +-- ChatApplicationService
-      |     +-- ChatStreamService
-      |     +-- ChatSessionService
-      |
-      +-- RagController
-      |     +-- RagDocumentService
-      |     +-- DocumentChunkService
-      |     +-- VectorEmbeddingService
-      |     +-- VectorIndexService
-      |     +-- RagRetrievalService
-      |
-      +-- AIOpsTaskService / AiOpsService
-      |     +-- QueryMetricsTools
-      |     +-- QueryLogsTools
-      |     +-- InternalDocsTools
-      |     +-- MySqlTools
-      |     +-- WebSearchTools
-      |
-      +-- MemoryController
-            +-- MemoryService
-            +-- AgentExecutionMemoryService
-            +-- MemoryMaintenanceService
+## 架构设计
 
-External services:
-DashScope, Milvus, MySQL, optional Prometheus / CLS / MCP
+```mermaid
+flowchart TD
+    U[Client / Web UI] --> API[Spring Boot API Layer]
+
+    API --> Chat[Chat Module]
+    API --> RAG[RAG Knowledge Base]
+    API --> Ops[AIOps Diagnosis]
+    API --> Tool[Tool System]
+    API --> Memory[Memory System]
+    API --> MCP[MCP Runtime]
+    API --> Skills[Skills Manager]
+
+    Chat --> Agent[React Agent / LLM Orchestration]
+    Agent --> Tool
+    Agent --> MCP
+    Agent --> RAG
+    Agent --> Memory
+
+    RAG --> Chunk[Document Chunking]
+    Chunk --> Embed[Embedding Service]
+    Embed --> Milvus[(Milvus Vector DB)]
+    RAG --> MySQL[(MySQL Metadata)]
+
+    Ops --> Metrics[Prometheus / Mock Metrics]
+    Ops --> Logs[CLS / Mock Logs]
+    Ops --> Docs[Internal Docs]
+
+    Memory --> FileMem[Long-term Memory Files]
+    Memory --> ExecMem[(Execution Memory in MySQL)]
+
+    MCP --> RemoteMCP[Remote MCP Servers]
+    Skills --> SkillFiles[SKILL.md / references / assets]
 ```
+
+整体架构遵循“Agent 编排层 + 工具能力层 + 知识检索层 + 记忆沉淀层 + 外部扩展层”的设计思路。
+
+其中，Agent 负责理解用户意图和组织推理流程；RAG 层负责提供企业知识上下文；工具层负责封装可审计的外部能力；MCP 层用于接入远程工具服务；记忆层负责保存会话和执行过程中的长期知识与短期状态。
+
+---
 
 ## 目录结构
 
@@ -71,41 +138,161 @@ DashScope, Milvus, MySQL, optional Prometheus / CLS / MCP
 .
 ├── aiops-docs/                  # 示例运维知识文档
 ├── docker/mysql/init/           # MySQL 初始化脚本
-├── docs/rag-api.md              # RAG API 详细说明
-├── memory/                      # 本地长期记忆目录
+├── docs/
+│   └── rag-api.md               # RAG API 详细说明
+├── skills/                      # Skills 能力包目录
 ├── src/main/java/org/example/
-│   ├── agent/tool/              # Agent 工具
-│   ├── client/                  # 外部客户端封装
-│   ├── config/                  # 应用配置
-│   ├── controller/              # HTTP API
-│   ├── dto/                     # 请求/响应 DTO
-│   ├── entity/                  # 数据库实体
+│   ├── agent/tool/              # Agent 本地工具定义
+│   ├── client/                  # 外部服务客户端封装
+│   ├── config/                  # Spring / AI / 数据源配置
+│   ├── controller/              # HTTP API 控制器
+│   ├── dto/                     # 请求与响应 DTO
+│   ├── entity/                  # MySQL 实体
 │   ├── mapper/                  # MyBatis Plus Mapper
-│   └── service/                 # 业务服务
+│   └── service/                 # 核心业务服务
 ├── src/main/resources/
-│   ├── application.yml          # Spring Boot 配置
-│   └── static/                  # 前端静态页面
-├── uploads/                     # 上传的知识库文件
+│   ├── application.yml          # 主配置文件
+│   └── static/                  # 本地 Web 控制台
+├── uploads/                     # 上传后的知识库文件
 ├── vector-database.yml          # MySQL + Milvus 本地依赖
+├── Dockerfile
+├── Makefile
 └── pom.xml
 ```
 
-## 环境准备
+---
 
-需要先安装：
+## 核心模块说明
 
-- JDK 17
-- Maven 3.8+
-- Docker / Docker Compose
-- DashScope API Key
+### 1. 智能对话模块
 
-设置 DashScope Key：
+对话模块提供普通问答和 SSE 流式问答接口，支持会话上下文维护、工具调用和长期记忆加载。
+
+典型调用链路如下：
+
+```text
+ChatController
+    -> ChatApplicationService
+    -> ChatService / ChatStreamService
+    -> ReactAgent
+    -> Local Tools / MCP Tools / RAG Retrieval / Memory
+```
+
+普通对话适合接口调试和短文本回答，流式对话适合前端实时渲染模型输出。
+
+---
+
+### 2. RAG 知识库模块
+
+RAG 模块完成从文档上传到向量召回的完整链路：
+
+```text
+Document Upload
+    -> File Storage
+    -> Metadata in MySQL
+    -> Document Chunking
+    -> DashScope Embedding
+    -> Milvus Vector Index
+    -> TopK Retrieval
+```
+
+当前适合处理企业内部 Markdown、运维文档、FAQ、故障处理手册等文本型知识。上传后，系统会保存原始文件、记录文档元数据，并将切分后的文本片段写入 Milvus。
+
+---
+
+### 3. AIOps 诊断模块
+
+AIOps 模块面向运维告警诊断场景。用户可以提交告警名称、级别、描述等信息，系统结合指标、日志、知识库和工具结果生成诊断建议。
+
+本地默认启用 Mock 模式，便于在没有真实 Prometheus 或 CLS 环境的情况下验证完整流程。接入真实环境时，可以关闭 Mock 并配置真实服务地址。
+
+---
+
+### 4. 工具系统
+
+工具系统将 Agent 可调用能力分为三类：
+
+| 类型 | 说明 |
+|---|---|
+| Local Tools | 后端 Java 工具，通过 Spring AI `@Tool` 暴露，适合封装强约束、可审计能力 |
+| MCP Tools | 远程 MCP Server 暴露的工具，适合接入外部系统能力 |
+| Skills | 面向任务的方法论提示词包，用于增强 Agent 的任务执行风格和约束 |
+
+本地工具由后端代码定义，前端只负责展示和启停，不允许页面动态新增任意本地命令，从而降低工具滥用风险。
+
+工具开关会落库到 MySQL，应用启动时自动补齐默认配置，运行时通过内存快照向对话线程提供可用工具列表。
+
+---
+
+### 5. MCP 管理模块
+
+MCP Server 配置支持在前端或 API 中管理，并持久化到 MySQL。
+
+当前支持：
+
+- SSE
+- Streamable HTTP
+- Header 鉴权配置
+- Server 启用 / 停用
+- 单个 Server 刷新
+- 全部 Server 刷新
+- MCP 工具快照查询
+
+系统采用运行时快照模式，管理接口变更配置后会重建连接并原子替换工具回调快照。对话线程只读取当前快照，不在请求过程中反复查询数据库或重建连接。
+
+---
+
+### 6. Skills 能力包
+
+Skills 用于给 Agent 注入特定任务的工作方法、约束和示例。
+
+一个 Skill 是一个目录，至少包含：
+
+```text
+skill-name/
+├── SKILL.md
+├── references/
+├── scripts/
+└── assets/
+```
+
+当前版本中，Skills 主要作为提示词能力包使用。系统会根据用户输入与 Skill 名称、描述和 `SKILL.md` 内容进行轻量匹配，最多加载 3 个相关 Skill 注入系统提示词。
+
+当前不会直接执行 Skill 目录中的脚本，动作执行仍由 Local Tools 或 MCP Tools 完成。
+
+---
+
+### 7. 记忆系统
+
+记忆系统分为长期记忆和短期记忆。
+
+| 类型 | 存储 | 用途 |
+|---|---|---|
+| 长期记忆 | `./memory/MEMORY.md` 与 `memory/topics/*.md` | 保存长期有效的用户偏好、项目背景和任务知识 |
+| 短期记忆 | MySQL `agent_execution_memory` | 保存 Agent 每次执行的输入、输出、状态和上下文快照 |
+
+长期记忆支持自动抽取。系统会在成功对话后判断本轮内容是否值得长期保存，并在达到阈值后批量回顾最近记录。短期记忆支持自动压缩，避免会话持续增长导致上下文过长。
+
+---
+
+## 快速开始
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/zyccccgis/superagent.git
+cd superagent
+```
+
+### 2. 配置环境变量
+
+至少需要配置 DashScope API Key：
 
 ```bash
 export DASHSCOPE_API_KEY="your-api-key"
 ```
 
-如果不使用默认 MySQL 账号，可以覆盖数据源配置：
+如果不使用默认 MySQL 配置，可以覆盖数据源：
 
 ```bash
 export SPRING_DATASOURCE_URL="jdbc:mysql://localhost:3306/superbiz_agent?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8"
@@ -113,24 +300,24 @@ export SPRING_DATASOURCE_USERNAME="superbiz"
 export SPRING_DATASOURCE_PASSWORD="superbiz1234"
 ```
 
-## 快速启动
-
-### 1. 启动基础依赖
+### 3. 启动基础依赖
 
 ```bash
 docker-compose -f vector-database.yml up -d
 ```
 
-该命令会启动：
+该命令会启动 MySQL、Milvus、Attu、MinIO 等本地依赖。
+
+默认服务地址：
 
 | 服务 | 地址 |
-| --- | --- |
+|---|---|
 | MySQL | `localhost:3306` |
 | Milvus | `localhost:19530` |
 | Attu | `http://localhost:8000` |
 | MinIO Console | `http://localhost:9001` |
 
-默认 MySQL 账号：
+默认 MySQL 配置：
 
 ```text
 database: superbiz_agent
@@ -139,70 +326,59 @@ password: superbiz1234
 root password: root1234
 ```
 
-### 2. 启动应用
+### 4. 启动应用
 
 ```bash
 mvn spring-boot:run
 ```
 
-默认服务地址：
+默认访问地址：
 
 ```text
 http://localhost:9900
 ```
 
-Web 页面：
-
-```text
-http://localhost:9900
-```
-
-### 3. 检查依赖状态
+### 5. 检查 Milvus 状态
 
 ```bash
 curl http://localhost:9900/milvus/health
 ```
 
-返回 `message: ok` 表示应用已经连上 Milvus。
+如果返回 `message: ok`，说明应用已经正常连接 Milvus。
 
-## RAG 知识库使用
+---
 
-### 上传文档
+## API 示例
 
-当前支持 `txt` 和 `md` 文件。上传后会保存文件、写入 MySQL 元数据，并同步写入 Milvus 向量索引。
+### 上传知识库文档
 
 ```bash
 curl -X POST http://localhost:9900/api/rag/documents \
   -F "file=@aiops-docs/cpu_high_usage.md"
 ```
 
-批量导入示例文档：
+### 批量导入示例文档
 
 ```bash
 for file in aiops-docs/*.md; do
-  curl -X POST http://localhost:9900/api/rag/documents -F "file=@${file}"
+  curl -X POST http://localhost:9900/api/rag/documents \
+    -F "file=@${file}"
 done
 ```
 
-### 查询文档
+### 查询文档列表
 
 ```bash
 curl "http://localhost:9900/api/rag/documents?page=1&pageSize=20&keyword=cpu"
 ```
 
-### 测试召回
-
-该接口只做向量检索，不调用大模型。
+### 测试向量召回
 
 ```bash
 curl -X POST http://localhost:9900/api/rag/retrieve \
   -H "Content-Type: application/json" \
   -d '{"text":"CPU 使用率过高怎么排查","topK":5}'
 ```
-
-更多字段和响应格式见 [docs/rag-api.md](docs/rag-api.md)。
-
-## 对话接口
 
 ### 普通对话
 
@@ -212,7 +388,7 @@ curl -X POST http://localhost:9900/api/chat \
   -d '{"Id":"demo-session","Question":"CPU 使用率过高应该怎么排查？"}'
 ```
 
-### 流式对话
+### SSE 流式对话
 
 ```bash
 curl -N -X POST http://localhost:9900/api/chat_stream \
@@ -220,93 +396,35 @@ curl -N -X POST http://localhost:9900/api/chat_stream \
   -d '{"Id":"demo-session","Question":"请总结磁盘空间告警的处理流程"}'
 ```
 
-### 会话查询和清理
-
-```bash
-curl http://localhost:9900/api/chat/session/demo-session
-```
-
-```bash
-curl -X POST http://localhost:9900/api/chat/clear \
-  -H "Content-Type: application/json" \
-  -d '{"Id":"demo-session"}'
-```
-
-## AIOps 诊断任务
-
-创建诊断任务：
+### 创建 AIOps 诊断任务
 
 ```bash
 curl -X POST http://localhost:9900/api/ai_ops/tasks \
   -H "Content-Type: application/json" \
-  -d '{"alertName":"CPUHighUsage","severity":"critical","description":"prod-app-01 CPU 使用率持续高于 90%"}'
+  -d '{
+    "alertName":"CPUHighUsage",
+    "severity":"critical",
+    "description":"prod-app-01 CPU 使用率持续高于 90%"
+  }'
 ```
 
-查询诊断任务：
+### 查询诊断任务
 
 ```bash
 curl http://localhost:9900/api/ai_ops/tasks/{taskId}
 ```
 
-默认配置中 Prometheus 和 CLS 都开启了 Mock 模式，本地启动后可以先验证完整流程。接入真实环境时，需要关闭 Mock 并配置对应服务地址。
+---
 
-## 记忆管理接口
+## 主要配置
 
-记忆系统分为两层：
-
-- **长期记忆**：文件存储在 `./memory`，入口索引为 `MEMORY.md`，话题文件位于 `memory/topics/`。
-- **短期记忆**：Agent 每次执行后的输入、输出、状态和上下文快照写入 MySQL `agent_execution_memory`。
-
-长期记忆不依赖前端按钮手动维护。后端会在成功对话后自动让模型判断本轮记录是否有长期保存价值；达到阈值时会批量回顾最近成功记录；短期记忆压缩前也会先抽取长期记忆，避免压缩导致细节丢失。模型通过 `hasMemory` 决定是否真正写入长期记忆。
-
-短期记忆也会自动维护。默认同一 `sessionId` 下未压缩记录超过阈值后，保留最近记录，把更旧记录压缩成一条 `COMPRESSED` 摘要记录。前端只展示记录，不负责触发压缩。
-
-`MEMORY.md` 和 `topics/*.md` 之间会自动保持一致：
-
-- 创建或更新 topic 文件时，缺失索引会自动补齐。
-- 删除 topic 文件时，会同步移除 `MEMORY.md` 中对应索引块。
-- `MEMORY.md` 中引用不存在的 topic 会被清理。
-- 重复 topic 索引会去重。
-- 自动抽取写入 topic 后，会用模型返回的 description / keywords 更新索引块。
-- 文件读写通过单进程锁串行化，避免自动抽取和手动编辑并发覆盖。
-
-长期记忆文件：
-
-```bash
-curl "http://localhost:9900/api/memory/files?type=all"
-```
-
-执行记忆：
-
-```bash
-curl "http://localhost:9900/api/memory/executions?page=1&pageSize=10"
-```
-
-手动抽取和压缩接口仍保留给调试或运维补救使用，正常运行不依赖前端手动触发：
-
-```bash
-curl -X POST http://localhost:9900/api/memory/extract \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
-
-压缩短期记忆：
-
-```bash
-curl -X POST http://localhost:9900/api/memory/compress \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
-
-## 核心配置
-
-主要配置文件：
+核心配置文件位于：
 
 ```text
 src/main/resources/application.yml
 ```
 
-关键配置摘录：
+关键配置示例：
 
 ```yaml
 server:
@@ -346,7 +464,6 @@ rag:
 
 memory:
   base-path: ./memory
-  max-index-lines: 200
   short-memory-pairs: 6
   short-compression:
     enabled: true
@@ -379,10 +496,12 @@ agent:
     tool-call-limit: 12
 ```
 
-## Agent 工具开关
+---
+
+## 工具开关
 
 | 配置项 | 默认值 | 说明 |
-| --- | --- | --- |
+|---|---:|---|
 | `prometheus.mock-enabled` | `true` | 指标查询使用模拟数据 |
 | `cls.mock-enabled` | `true` | 日志查询使用模拟数据 |
 | `mysql.tool.enabled` | `false` | 是否启用 MySQL 查询工具 |
@@ -391,136 +510,26 @@ agent:
 | `memory.short-compression.enabled` | `true` | 是否自动压缩旧短期记忆 |
 | `memory.long-extraction.enabled` | `true` | 是否自动抽取长期记忆 |
 
-开启真实工具前建议先限制数据库账号权限、查询超时时间和网络访问范围。
+生产环境开启真实工具前，建议限制数据库账号权限、查询超时时间、网络访问范围和工具调用上限。
 
-## 工具系统
-
-项目把模型可用能力分为三类：
-
-- **Tools**：本地 Java 工具，通过 Spring AI `@Tool` 暴露，例如时间、RAG 内部文档、Prometheus 告警、日志、MySQL、外网 HTTP 查询、公共搜索、天气/地图。
-- **MCP**：外部工具服务，通过 Spring AI `ToolCallbackProvider` 接入，并在创建 Agent 时注册为 MCP tool callbacks。
-- **Skills**：计划作为“提示词能力包”加载，用于给模型注入某类任务的工作方法、约束和示例；Skills 不直接执行动作，动作仍由 Tools/MCP 完成。
-
-当前工具注册集中在 `ToolSystemService`：
-
-```text
-ToolSystemService
-├── listTools()                  # 扫描 @ManagedTool 本地工具并返回管理列表
-├── setToolEnabled()             # 修改本地工具开关并刷新内存快照
-├── buildLocalToolObjects()      # 注册已启用的本地 @Tool 对象
-├── getMcpToolCallbacks()        # 注册 MCP 工具回调
-├── buildToolInstructions()      # 生成工具使用说明，注入 system prompt
-└── logAvailableTools()          # 输出当前可用本地工具和 MCP 工具
-```
-
-`ChatService` 创建 ReactAgent 时会同时注册本地工具和 MCP 工具：
-
-```java
-ReactAgent.builder()
-    .methodTools(toolSystemService.buildLocalToolObjects())
-    .tools(toolSystemService.getMcpToolCallbacks())
-```
-
-本地 Tools 由后端代码定义，前端只负责展示和开关，不允许新增任意工具。每个本地工具类通过 `@ManagedTool` 声明展示名称、风险等级和默认开关，`ToolSystemService` 会扫描这些 Spring Bean，不需要维护额外的中心工具清单。工具开关落库到 MySQL `tool_config`，应用启动时会补齐缺失的默认配置，并把已启用工具加载为内存快照；聊天线程只读快照，管理接口更新数据库后再原子刷新快照。
-
-新增外部信息类工具时，优先复制当前轻量模式：工具类自己持有 HTTP 客户端、配置超时和返回结构化 JSON，不直接引入整套 starter。当前已内置：
-
-| 工具 | 方法 | 说明 |
-| --- | --- | --- |
-| `public_search` | `searchPublicWeb` | 查询公开搜索摘要和相关链接 |
-| `weather_map` | `getCurrentWeather` | 按城市或地点查询当前天气 |
-| `weather_map` | `searchMapPlace` | 按地点名称查询公开地图地理编码结果 |
-
-| 接口 | 说明 |
-| --- | --- |
-| `GET /api/tools` | 查询本地工具列表、可用状态、启用状态和风险等级 |
-| `PUT /api/tools/{toolName}/enabled` | 修改指定本地工具开关，请求体为 `{"enabled": true}` |
-
-本地工具适合放强约束、可审计的能力；MCP 适合接入外部系统；Skills 后续适合做 Java 调试、AIOps 诊断、RAG 维护等任务的专用提示词包。
-
-### MCP 管理
-
-MCP Server 配置由前端管理并落库到 MySQL `mcp_server_config`。当前支持 `SSE` 和 `STREAMABLE_HTTP` 两种远程传输，不支持前端配置 `STDIO`，避免把任意本地命令执行能力暴露给页面。需要认证的远程 MCP 可以通过 `headers_json` 配置请求头：
-
-```json
-{
-  "Authorization": "Bearer your_token",
-  "X-API-Key": "your_api_key"
-}
-```
-
-远程 MCP 初始化慢时，可以在前端配置 `request_timeout_seconds`，允许范围为 5 到 180 秒。连接失败时后端会保存简化后的根因到 `last_error`，日志会打印脱敏后的最终 URL 方便排查。
-
-运行时采用快照模式：
-
-```text
-mcp_server_config
-    ↓
-McpServerService
-    ↓
-McpRuntimeRegistry
-    ↓
-AtomicReference<McpToolSnapshot>
-    ↓
-ChatService / ToolSystemService 只读快照
-```
-
-管理接口更新配置后会重建 MCP 连接，并原子替换工具回调快照；对话线程不会在请求过程中查询数据库或重建连接。
-
-应用启动时只创建/迁移 `mcp_server_config` 表，不主动连接远程 MCP Server。已启用的 MCP 会标记为 `UNKNOWN`，需要在前端点击刷新或通过管理接口变更配置后再重建运行时，避免无效远程 MCP 影响系统启动。
-
-| 接口 | 说明 |
-| --- | --- |
-| `GET /api/mcp/servers` | 查询 MCP Server 配置和运行状态 |
-| `POST /api/mcp/servers` | 新增 MCP Server，并刷新运行时 |
-| `PUT /api/mcp/servers/{id}` | 更新 MCP Server 配置 |
-| `DELETE /api/mcp/servers/{id}` | 删除 MCP Server，并刷新运行时 |
-| `PUT /api/mcp/servers/{id}/enabled` | 启用或停用 MCP Server |
-| `POST /api/mcp/servers/refresh` | 重建全部已启用 MCP 连接 |
-| `POST /api/mcp/servers/{id}/refresh` | 刷新 MCP 运行时 |
-| `GET /api/mcp/tools` | 查询当前 MCP 工具快照 |
-
-### Skills 管理
-
-Skills 采用文件系统存储，不落 MySQL。每个 Skill 是一个目录，必须包含 `SKILL.md`，可以附带 `references/`、`scripts/`、`assets/` 等资源。第一版安装入口只支持 ZIP URL，后端会下载、解压、校验 `SKILL.md`、防路径穿越，然后复制到本地目录。
-
-```text
-skills/
-├── registry.json
-└── installed/
-    └── java-debug/
-        ├── SKILL.md
-        ├── references/
-        ├── scripts/
-        └── assets/
-```
-
-`registry.json` 保存快速列表和启用状态，`SKILL.md` 保存能力说明。复制整个 `skills/` 目录即可迁移已安装 Skills。
-
-对话时后端会从 `registry.json` 中读取已启用 Skills，根据用户输入与 Skill 名称、描述、`SKILL.md` 前部内容做轻量关键词匹配，最多加载 3 个相关 `SKILL.md` 注入 system prompt。当前版本不使用向量检索，也不会执行 Skill 目录中的脚本。
-
-| 接口 | 说明 |
-| --- | --- |
-| `GET /api/skills` | 查询已安装 Skills |
-| `GET /api/skills/{name}` | 读取 Skill 详情和 `SKILL.md` 内容 |
-| `POST /api/skills/install` | 从 ZIP URL 安装 Skill |
-| `PUT /api/skills/{name}/enabled` | 启用或停用 Skill |
-| `DELETE /api/skills/{name}` | 删除 Skill 目录并更新 registry |
+---
 
 ## 数据存储
 
-| 数据 | 存储位置 |
-| --- | --- |
+| 数据类型 | 存储位置 |
+|---|---|
 | 上传文件 | `./uploads` |
 | 长期记忆文件 | `./memory` |
+| Skills 能力包 | `./skills` |
 | RAG 文档元数据 | MySQL `rag_documents` |
 | AIOps 诊断任务 | MySQL `agent_diagnostic_task` |
 | Agent 执行记忆 | MySQL `agent_execution_memory` |
 | 本地工具开关 | MySQL `tool_config` |
-| MCP 服务配置 | MySQL `mcp_server_config` |
-| Skills 能力包 | `./skills` |
+| MCP Server 配置 | MySQL `mcp_server_config` |
 | 文档向量 | Milvus |
 | Docker 持久化数据 | `./volumes` |
+
+---
 
 ## 常用开发命令
 
@@ -528,7 +537,7 @@ skills/
 # 编译
 mvn clean package
 
-# 运行
+# 启动应用
 mvn spring-boot:run
 
 # 启动本地依赖
@@ -539,27 +548,91 @@ docker-compose -f vector-database.yml down
 
 # 查看容器状态
 docker ps
-```
 
-也可以查看 Makefile 中的辅助命令：
-
-```bash
+# 查看 Makefile 帮助
 make help
 ```
 
-注意：当前源码中的 RAG 上传接口是 `/api/rag/documents`。如果使用脚本或 Makefile 批量导入文档，请确认上传地址没有仍然指向旧接口。
+---
+
+## 适用场景
+
+SuperBizAgent 适合用于以下项目或简历场景：
+
+- 企业知识库 RAG 系统
+- 运维智能问答助手
+- AIOps 根因分析原型
+- 支持工具调用的智能体后端
+- Spring AI / Spring AI Alibaba 工程实践
+- MCP 工具接入与治理平台
+- 带长期记忆与短期执行记忆的 Agent 服务
+
+---
+
+## 后续规划
+
+- 支持更多文件类型解析，如 PDF、DOCX、HTML
+- 引入混合检索策略，如 BM25 + 向量召回 + Reranker
+- 增强 AIOps 诊断链路，支持指标趋势、日志聚类和根因路径推理
+- 增加工具调用审计、权限控制和敏感操作拦截
+- 支持多租户知识库和用户级隔离
+- 将 Skills 与向量检索结合，提升能力包匹配准确率
+- 引入 Agent 评测集，衡量召回质量、回答质量和工具调用准确率
+
+---
 
 ## 常见问题
 
-| 问题 | 处理方式 |
-| --- | --- |
-| DashScope 调用失败 | 检查 `DASHSCOPE_API_KEY` 是否在启动应用的 shell 中生效 |
-| `/milvus/health` 返回 503 | 检查 Milvus、etcd、MinIO 容器是否启动完成 |
-| 上传文档失败 | 确认文件类型为 `txt` 或 `md`，并检查 DashScope 与 Milvus 状态 |
-| MySQL 连接失败 | 检查 `superbiz-mysql` 容器、3306 端口和账号密码 |
-| AIOps 只有模拟数据 | 默认开启 Mock，关闭 `prometheus.mock-enabled` / `cls.mock-enabled` 后接入真实服务 |
-| Agent 提前停止 | 调整 `agent.safety.model-call-limit` 和 `agent.safety.tool-call-limit` |
+### DashScope 调用失败
+
+检查 `DASHSCOPE_API_KEY` 是否已经在启动应用的 shell 中生效。
+
+```bash
+echo $DASHSCOPE_API_KEY
+```
+
+### Milvus 健康检查失败
+
+检查 Milvus、etcd、MinIO 容器是否启动完成。
+
+```bash
+docker ps
+curl http://localhost:9900/milvus/health
+```
+
+### 上传文档失败
+
+确认文件类型是否为 `txt` 或 `md`，并检查 DashScope 与 Milvus 服务状态。
+
+### MySQL 连接失败
+
+检查 `superbiz-mysql` 容器、3306 端口和账号密码。
+
+### AIOps 诊断只有模拟数据
+
+默认开启 Mock 模式。接入真实环境时，需要关闭：
+
+```yaml
+prometheus:
+  mock-enabled: false
+
+cls:
+  mock-enabled: false
+```
+
+### Agent 过早停止
+
+可以适当调整：
+
+```yaml
+agent:
+  safety:
+    model-call-limit: 6
+    tool-call-limit: 12
+```
+
+---
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+This project is licensed under the Apache License 2.0.
