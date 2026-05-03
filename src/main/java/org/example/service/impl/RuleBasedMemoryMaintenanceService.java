@@ -183,8 +183,8 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
 
     private LongTermExtraction extractWithModel(List<AgentExecutionMemory> records) {
         String prompt = """
-                请从下面的 Agent 执行记录中提炼可以长期保存的记忆。
-                你必须同时决定合适的 topic 文件名和记忆内容。
+                请严格判断下面的 Agent 执行记录是否值得写入长期记忆。
+                默认结论是不要保存。只有存在明确、稳定、未来会复用的信息时，才允许 hasMemory=true。
 
                 输出必须是严格 JSON，不要输出 Markdown 代码块，不要输出额外解释。
                 JSON schema:
@@ -196,16 +196,26 @@ public class RuleBasedMemoryMaintenanceService implements MemoryMaintenanceServi
                   "content": "Markdown 格式的长期记忆内容"
                 }
 
-                规则:
+                必须保存的情况:
+                - 用户明确要求长期记住，例如“记住/记一下/以后都/以后不要/下次/remember”。
+                - 用户确认了长期偏好、禁忌、工作方式或团队约定。
+                - 项目级稳定事实：启动方式、环境要求、版本约束、架构决策、接口契约、工具/MCP/Skill 使用约定。
+                - 已确认且未来可复用的排障结论、根因、处置流程或业务规则。
+
+                必须不保存的情况:
+                - 普通问答、解释概念、临时建议、一次性操作记录。
+                - 当前轮才出现的未确认猜测、排查中间过程、失败日志、异常堆栈、大段输出。
+                - 只对当前请求有用的代码片段、命令输出、网页内容、搜索结果。
+                - 重复信息、低置信度信息、敏感凭据、token、密码、私钥、cookie。
+                - Agent 自己做过什么但对未来没有约束价值的流水账。
+
+                判断标准:
+                - 如果你不确定是否未来会复用，必须输出 hasMemory=false。
+                - 如果只有 agentOutput 有信息，但用户没有确认其长期有效，通常输出 hasMemory=false。
+                - content 必须短小，只记录结论性事实，不记录对话过程。
                 - 如果没有值得长期保存的信息，输出 {"hasMemory": false, "targetPath": "", "description": "", "keywords": "", "content": ""}。
-                - 你必须先判断本轮或这批记录是否包含长期价值，再决定 hasMemory。
-                - 用户明确表达长期偏好、约束、习惯、禁忌或未来工作方式时，通常应保存。
-                - 项目启动方式、环境要求、接口约定、架构决策、排障结论、已确认的实现方案通常应保存。
-                - 临时问答、寒暄、一次性报错、重复流水、未确认猜测、敏感凭据或大段日志原文不要保存。
                 - targetPath 必须在 topics/ 下，文件名使用英文小写 kebab-case，以 .md 结尾。
-                - content 使用 Markdown，包含二级标题和要点列表。
-                - 只保留可复用事实、架构决策、接口约定、排障结论、项目偏好。
-                - 不要记录临时寒暄、一次性错误、无价值流水。
+                - content 使用 Markdown，包含二级标题和要点列表，不超过 300 字。
                 - 如涉及来源，在内容里引用 executionId。
 
                 执行记录:

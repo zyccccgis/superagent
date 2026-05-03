@@ -3,7 +3,7 @@ package org.example.service;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
-import com.alibaba.cloud.ai.graph.agent.flow.agent.SupervisorAgent;
+import com.alibaba.cloud.ai.graph.agent.flow.agent.SequentialAgent;
 import com.alibaba.cloud.ai.graph.agent.hook.Hook;
 import com.alibaba.cloud.ai.graph.agent.hook.modelcalllimit.ModelCallLimitHook;
 import com.alibaba.cloud.ai.graph.agent.hook.toolcalllimit.ToolCallLimitHook;
@@ -77,12 +77,10 @@ public class AiOpsService {
         ReactAgent plannerAgent = buildPlannerAgent(chatModel, toolCallbacks);
         ReactAgent executorAgent = buildExecutorAgent(chatModel, toolCallbacks);
 
-        // 构建 Supervisor Agent
-        SupervisorAgent supervisorAgent = SupervisorAgent.builder()
+        // 新版 Spring AI Alibaba 使用 FlowAgent 体系，这里按 Planner -> Executor 顺序编排。
+        SequentialAgent supervisorAgent = SequentialAgent.builder()
                 .name("ai_ops_supervisor")
                 .description("负责调度 Planner 与 Executor 的多 Agent 控制器")
-                .model(chatModel)
-                .systemPrompt(buildSupervisorSystemPrompt())
                 .subAgents(List.of(plannerAgent, executorAgent))
                 .build();
 

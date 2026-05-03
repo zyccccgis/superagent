@@ -3,6 +3,20 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Environment / Secrets ###
+.env
+.env.*
+!.env.example
+*.local
+*.secret
+*.secrets
+secrets/
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
 ### IntelliJ IDEA ###
 .idea/modules.xml
 .idea/jarRepositories.xml
@@ -44,19 +58,15 @@ build/
 app.log
 logs/
 
-### Upload Files ###
+### Runtime Data ###
 uploads/
-memory/sessions/
-
-### Temp Scripts ###
-*.sh
-*.py
+memory/
+skills/installed/
+volumes/
 
 ### docker
-/volumes
 /server.pid
-/skills/installed/claude-api/
-/skills/installed/frontend-design/
-/skills/installed/mcp-builder/
-/skills/installed/skill-creator/
-/skills/installed/webapp-testing/
+
+### Temp Files ###
+*.tmp
+*.bak

@@ -6,6 +6,7 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.alibaba.cloud.ai.graph.agent.hook.Hook;
 import com.alibaba.cloud.ai.graph.agent.hook.modelcalllimit.ModelCallLimitHook;
+import com.alibaba.cloud.ai.graph.agent.hook.skills.SkillsAgentHook;
 import com.alibaba.cloud.ai.graph.agent.hook.toolcalllimit.ToolCallLimitHook;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import org.example.dto.MemoryContext;
@@ -13,6 +14,8 @@ import org.example.dto.MemoryFileResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -40,13 +43,19 @@ public class ChatService {
     private final ToolSystemService toolSystemService;
     private final SkillService skillService;
     private final AgentTraceService traceService;
+    private final SkillPythonScriptToolCallback skillPythonScriptToolCallback;
+    private final ObjectProvider<ToolCallback> pythonToolCallbackProvider;
 
     public ChatService(ToolSystemService toolSystemService,
                        SkillService skillService,
-                       AgentTraceService traceService) {
+                       AgentTraceService traceService,
+                       SkillPythonScriptToolCallback skillPythonScriptToolCallback,
+                       @Qualifier("pythonToolCallback") ObjectProvider<ToolCallback> pythonToolCallbackProvider) {
         this.toolSystemService = toolSystemService;
         this.skillService = skillService;
         this.traceService = traceService;
+        this.skillPythonScriptToolCallback = skillPythonScriptToolCallback;
+        this.pythonToolCallbackProvider = pythonToolCallbackProvider;
     }
 
     /**
@@ -80,7 +89,7 @@ public class ChatService {
      * 创建标准对话 ChatModel（默认参数）
      */
     public DashScopeChatModel createStandardChatModel(DashScopeApi dashScopeApi) {
-        return createChatModel(dashScopeApi, 0.7, 2000, 0.9);
+        return createChatModel(dashScopeApi, 0.7, 10000, 0.9);
     }
 
     /**
@@ -90,9 +99,14 @@ public class ChatService {
         StringBuilder systemPromptBuilder = new StringBuilder();
         
         systemPromptBuilder.append(toolSystemService.buildToolInstructions());
-        String skillsPrompt = skillService.buildSkillIndexPrompt();
-        if (hasText(skillsPrompt)) {
-            systemPromptBuilder.append(skillsPrompt);
+        if (skillPythonScriptToolCallback.isEnabled()) {
+            systemPromptBuilder.append("当已加载 Skill 明确要求运行 scripts/ 下的 Python 脚本时，调用 run_skill_python_script 工具。")
+                    .append("先用 args=[\"--help\"] 查看脚本用法，再按 Skill 指令传入参数。")
+                    .append("只能运行 read_skill 返回的 Skill 内置脚本。\n\n");
+        }
+        if (pythonToolCallbackProvider.getIfAvailable() != null) {
+            systemPromptBuilder.append("当 Skill 或用户任务需要执行 Python 片段进行计算、数据处理或格式转换时，可以调用 python 工具。")
+                    .append("不要用 Python 访问文件系统、启动进程或读取环境变量。\n\n");
         }
         
         if (memoryContext != null) {
@@ -144,7 +158,7 @@ public class ChatService {
                 .model(chatModel)
                 .systemPrompt(systemPrompt)
                 .tools(buildToolCallbacks(traceId))
-                .hooks(createSafetyHooks())
+                .hooks(createSafetyHooks(traceId))
                 .build();
     }
 
@@ -152,7 +166,13 @@ public class ChatService {
         List<ToolCallback> callbacks = new ArrayList<>();
         callbacks.addAll(wrapCallbacks(toolSystemService.getLocalToolCallbacks(), traceId, "LOCAL"));
         callbacks.addAll(wrapCallbacks(toolSystemService.getMcpToolCallbacks(), traceId, "MCP"));
-        callbacks.addAll(wrapCallbacks(skillService.buildSkillToolCallbacks(), traceId, "SKILL"));
+        if (skillPythonScriptToolCallback.isEnabled()) {
+            callbacks.add(new ObservedToolCallback(skillPythonScriptToolCallback, traceService, traceId, "SKILL_SCRIPT"));
+        }
+        ToolCallback pythonToolCallback = pythonToolCallbackProvider.getIfAvailable();
+        if (pythonToolCallback != null) {
+            callbacks.add(new ObservedToolCallback(pythonToolCallback, traceService, traceId, "PYTHON"));
+        }
         return callbacks.toArray(ToolCallback[]::new);
     }
 
@@ -163,8 +183,12 @@ public class ChatService {
                 .toList();
     }
 
-    private List<Hook> createSafetyHooks() {
+    private List<Hook> createSafetyHooks(String traceId) {
         return List.of(
+                SkillsAgentHook.builder()
+                        .skillRegistry(skillService)
+                        .build(),
+                new ObservedModelCallHook(traceService, traceId),
                 ModelCallLimitHook.builder()
                         .threadLimit(modelCallLimit)
                         .exitBehavior(ModelCallLimitHook.ExitBehavior.END)

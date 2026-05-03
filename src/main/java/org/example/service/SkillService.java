@@ -1,5 +1,6 @@
 package org.example.service;
 
+import com.alibaba.cloud.ai.graph.skills.SkillMetadata;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.dto.SkillDetailResponse;
@@ -8,13 +9,13 @@ import org.example.dto.SkillListResponse;
 import org.example.dto.SkillResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.tool.ToolCallback;
-import org.springframework.ai.tool.definition.ToolDefinition;
+import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import jakarta.annotation.PostConstruct;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -30,13 +31,14 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 @Service
-public class SkillService {
+public class SkillService implements com.alibaba.cloud.ai.graph.skills.registry.SkillRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(SkillService.class);
     private static final long MAX_ZIP_BYTES = 20L * 1024L * 1024L;
@@ -64,7 +66,7 @@ public class SkillService {
         try {
             Files.createDirectories(installedRoot);
             if (!Files.exists(registryPath)) {
-                writeRegistry(new SkillRegistry());
+                writeRegistry(new LocalSkillRegistry());
             }
         } catch (Exception e) {
             throw new IllegalStateException("初始化 Skills 目录失败: " + e.getMessage(), e);
@@ -76,7 +78,7 @@ public class SkillService {
     public SkillListResponse listSkills() {
         lock.readLock().lock();
         try {
-            SkillRegistry registry = readRegistry();
+            LocalSkillRegistry registry = readRegistry();
             List<SkillResponse> items = registry.skills.values().stream()
                     .sorted(Comparator.comparing(SkillRecord::getName))
                     .map(this::toResponse)
@@ -135,7 +137,7 @@ public class SkillService {
                 copyDirectory(skillMd.getParent(), targetDir);
 
                 long now = Instant.now().toEpochMilli();
-                SkillRegistry registry = readRegistry();
+                LocalSkillRegistry registry = readRegistry();
                 SkillRecord record = registry.skills.getOrDefault(name, new SkillRecord());
                 record.name = name;
                 record.displayName = metadata.getOrDefault("displayName", metadata.getOrDefault("title", name));
@@ -169,7 +171,7 @@ public class SkillService {
         }
         lock.writeLock().lock();
         try {
-            SkillRegistry registry = readRegistry();
+            LocalSkillRegistry registry = readRegistry();
             SkillRecord record = requireSkill(registry, normalizeSkillName(name));
             record.enabled = enabled;
             record.updatedAt = Instant.now().toEpochMilli();
@@ -186,7 +188,7 @@ public class SkillService {
         lock.writeLock().lock();
         try {
             String normalizedName = normalizeSkillName(name);
-            SkillRegistry registry = readRegistry();
+            LocalSkillRegistry registry = readRegistry();
             requireSkill(registry, normalizedName);
             registry.skills.remove(normalizedName);
             deleteRecursively(installedRoot.resolve(normalizedName).normalize());
@@ -198,55 +200,82 @@ public class SkillService {
         }
     }
 
-    public String buildSkillIndexPrompt() {
+    @Override
+    public Optional<SkillMetadata> get(String name) {
         lock.readLock().lock();
         try {
-            SkillRegistry registry = readRegistry();
-            List<SkillRecord> enabledSkills = registry.skills.values().stream()
+            String normalizedName = normalizeSkillName(name);
+            SkillRecord record = readRegistry().skills.get(normalizedName);
+            if (!isEnabledAndInstalled(record)) {
+                return Optional.empty();
+            }
+            return Optional.of(toSkillMetadata(record));
+        } catch (Exception e) {
+            logger.warn("读取 Skill 元数据失败, name: {}", name, e);
+            return Optional.empty();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public List<SkillMetadata> listAll() {
+        lock.readLock().lock();
+        try {
+            return readRegistry().skills.values().stream()
                     .filter(this::isEnabledAndInstalled)
                     .sorted(Comparator.comparing(SkillRecord::getName))
+                    .map(this::toSkillMetadata)
                     .toList();
-            if (enabledSkills.isEmpty()) {
-                return "";
-            }
-            StringBuilder builder = new StringBuilder();
-            builder.append("--- 可用 Skills ---\n")
-                    .append("你可以根据用户问题自主决定是否调用 read_skill 工具加载某个 Skill 的完整说明。")
-                    .append("不要仅因为 Skill 存在就调用，只有当任务与 description 明确相关时再调用。\n");
-            for (SkillRecord skill : enabledSkills) {
-                builder.append("- ")
-                        .append(skill.name)
-                        .append(": ")
-                        .append(StringUtils.hasText(skill.description) ? skill.description : "无描述")
-                        .append('\n');
-            }
-            builder.append("--- Skills 列表结束 ---\n\n");
-            return builder.toString();
         } catch (Exception e) {
-            logger.warn("构建 Skills 索引失败", e);
-            return "";
+            logger.warn("读取 Skill 列表失败", e);
+            return List.of();
         } finally {
             lock.readLock().unlock();
         }
     }
 
-    public ToolCallback[] buildSkillToolCallbacks() {
-        if (!hasEnabledSkills()) {
-            return new ToolCallback[0];
-        }
-        return new ToolCallback[]{new ReadSkillToolCallback()};
+    @Override
+    public boolean contains(String name) {
+        return get(name).isPresent();
     }
 
-    private boolean hasEnabledSkills() {
-        lock.readLock().lock();
+    @Override
+    public int size() {
+        return listAll().size();
+    }
+
+    @Override
+    public void reload() {
+        // 当前项目的 Skill registry.json 每次读取时都会加载最新内容，无需额外刷新缓存。
+    }
+
+    @Override
+    public String readSkillContent(String name) throws IOException {
         try {
-            return readRegistry().skills.values().stream().anyMatch(this::isEnabledAndInstalled);
+            return readSkillContentInternal(normalizeSkillName(name));
+        } catch (IOException e) {
+            throw e;
         } catch (Exception e) {
-            logger.warn("检查 Skills 可用性失败", e);
-            return false;
-        } finally {
-            lock.readLock().unlock();
+            throw new IOException("读取 Skill 失败: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public String getSkillLoadInstructions() {
+        return "当用户任务与某个 Skill 的 description 明确匹配时，调用 read_skill(skill_name) 加载完整 SKILL.md。"
+                + "如果 read_skill 返回了 scripts 清单，并且 Skill 指令要求运行脚本，优先调用 run_skill_python_script(skill_name, script_path, args)。"
+                + "不要用通用 python 工具伪造读取 Skill 文件。";
+    }
+
+    @Override
+    public String getRegistryType() {
+        return "superbiz-filesystem";
+    }
+
+    @Override
+    public SystemPromptTemplate getSystemPromptTemplate() {
+        return new SystemPromptTemplate("## 可用 Skills\n{skills_list}\n\n## 加载说明\n{skills_load_instructions}");
     }
 
     private boolean isEnabledAndInstalled(SkillRecord record) {
@@ -257,55 +286,116 @@ public class SkillService {
                 && Files.exists(skillMdPath(record));
     }
 
-    private String readSkillForTool(String toolInput) {
-        try {
-            String skillName = extractSkillName(toolInput);
-            if (!StringUtils.hasText(skillName)) {
-                return "缺少 skill_name 参数。请传入需要加载的 Skill 名称。";
-            }
-            return readSkillContent(normalizeSkillName(skillName));
-        } catch (Exception e) {
-            logger.warn("read_skill 调用失败, input: {}", toolInput, e);
-            return "读取 Skill 失败: " + e.getMessage();
-        }
-    }
-
-    private String extractSkillName(String toolInput) throws Exception {
-        if (!StringUtils.hasText(toolInput)) {
-            return "";
-        }
-        String trimmed = toolInput.trim();
-        if (!trimmed.startsWith("{")) {
-            return trimmed;
-        }
-        Map<?, ?> payload = objectMapper.readValue(trimmed, Map.class);
-        Object value = payload.get("skill_name");
-        if (value == null) {
-            value = payload.get("name");
-        }
-        if (value == null) {
-            value = payload.get("skillName");
-        }
-        return value == null ? "" : value.toString();
-    }
-
-    private String readSkillContent(String name) throws Exception {
+    private String readSkillContentInternal(String name) throws Exception {
         lock.readLock().lock();
         try {
-            SkillRegistry registry = readRegistry();
+            LocalSkillRegistry registry = readRegistry();
             SkillRecord record = requireSkill(registry, name);
             if (!isEnabledAndInstalled(record)) {
-                return "Skill 当前未启用或 SKILL.md 不存在: " + name;
+                throw new IllegalArgumentException("Skill 当前未启用或 SKILL.md 不存在: " + name);
             }
             Path skillMd = skillMdPath(record);
             return "--- Skill: " + record.name + " ---\n"
                     + "description: " + (StringUtils.hasText(record.description) ? record.description : "") + "\n"
                     + "base_path: " + installedRoot.resolve(record.name).normalize() + "\n\n"
+                    + buildBundledResourceSummary(record)
                     + Files.readString(skillMd, StandardCharsets.UTF_8)
                     + "\n--- Skill 结束 ---";
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    public Path resolveEnabledSkillScript(String skillName, String scriptPath) {
+        lock.readLock().lock();
+        try {
+            String normalizedName = normalizeSkillName(skillName);
+            LocalSkillRegistry registry = readRegistry();
+            SkillRecord record = requireSkill(registry, normalizedName);
+            if (!isEnabledAndInstalled(record)) {
+                throw new IllegalArgumentException("Skill 当前未启用或 SKILL.md 不存在: " + normalizedName);
+            }
+            if (!StringUtils.hasText(scriptPath)) {
+                throw new IllegalArgumentException("script_path 不能为空");
+            }
+            String normalizedScript = scriptPath.trim().replace('\\', '/');
+            if (normalizedScript.startsWith("/")) {
+                throw new IllegalArgumentException("script_path 必须是 Skill 内部相对路径");
+            }
+            if (!normalizedScript.startsWith("scripts/")) {
+                normalizedScript = "scripts/" + normalizedScript;
+            }
+            if (!normalizedScript.endsWith(".py")) {
+                throw new IllegalArgumentException("当前只允许执行 Python 脚本: " + normalizedScript);
+            }
+            Path skillRoot = installedRoot.resolve(record.name).normalize();
+            Path scriptsRoot = skillRoot.resolve("scripts").normalize();
+            Path script = skillRoot.resolve(normalizedScript).normalize();
+            if (!script.startsWith(scriptsRoot)) {
+                throw new IllegalArgumentException("script_path 超出 Skill scripts 目录");
+            }
+            if (!Files.isRegularFile(script)) {
+                throw new IllegalArgumentException("Skill 脚本不存在: " + normalizedScript);
+            }
+            return script;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("解析 Skill 脚本失败: " + e.getMessage(), e);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public Path getSkillRoot(String skillName) {
+        return installedRoot.resolve(normalizeSkillName(skillName)).normalize();
+    }
+
+    private String buildBundledResourceSummary(SkillRecord record) {
+        Path skillRoot = installedRoot.resolve(record.name).normalize();
+        StringBuilder summary = new StringBuilder();
+        appendResourceList(summary, record.name, "scripts", skillRoot.resolve("scripts"));
+        appendResourceList(summary, record.name, "references", skillRoot.resolve("references"));
+        appendResourceList(summary, record.name, "reference", skillRoot.resolve("reference"));
+        appendResourceList(summary, record.name, "examples", skillRoot.resolve("examples"));
+        if (summary.length() == 0) {
+            return "";
+        }
+        return "--- Skill bundled resources ---\n"
+                + summary
+                + "--- Skill bundled resources end ---\n\n";
+    }
+
+    private void appendResourceList(StringBuilder summary, String skillName, String label, Path dir) {
+        if (!Files.isDirectory(dir)) {
+            return;
+        }
+        Path normalizedDir = dir.normalize();
+        try (Stream<Path> stream = Files.walk(normalizedDir, 3)) {
+            List<String> files = stream
+                    .filter(Files::isRegularFile)
+                    .sorted()
+                    .limit(30)
+                    .map(path -> normalizedDir.getParent().relativize(path).toString().replace('\\', '/'))
+                    .toList();
+            if (!files.isEmpty()) {
+                summary.append(label).append(":\n");
+                for (String file : files) {
+                    summary.append("- ").append(file).append("\n");
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("读取 Skill 资源清单失败, skill: {}, dir: {}", skillName, dir, e);
+        }
+    }
+
+    private SkillMetadata toSkillMetadata(SkillRecord record) {
+        return SkillMetadata.builder()
+                .name(record.name)
+                .description(StringUtils.hasText(record.description) ? record.description : "无描述")
+                .skillPath(installedRoot.resolve(record.name).normalize().toString())
+                .source(StringUtils.hasText(record.sourceType) ? record.sourceType : "filesystem")
+                .build();
     }
 
     private Path downloadZip(String sourceUrl) throws Exception {
@@ -402,7 +492,7 @@ public class SkillService {
         return sourceUrl.contains("github.com") ? "github_zip" : "zip";
     }
 
-    private SkillRecord requireSkill(SkillRegistry registry, String name) {
+    private SkillRecord requireSkill(LocalSkillRegistry registry, String name) {
         SkillRecord record = registry.skills.get(name);
         if (record == null) {
             throw new IllegalArgumentException("Skill 不存在: " + name);
@@ -489,24 +579,24 @@ public class SkillService {
         }
     }
 
-    private SkillRegistry readRegistry() throws Exception {
+    private LocalSkillRegistry readRegistry() throws Exception {
         if (!Files.exists(registryPath)) {
-            return new SkillRegistry();
+            return new LocalSkillRegistry();
         }
-        SkillRegistry registry = objectMapper.readValue(Files.readString(registryPath, StandardCharsets.UTF_8), SkillRegistry.class);
+        LocalSkillRegistry registry = objectMapper.readValue(Files.readString(registryPath, StandardCharsets.UTF_8), LocalSkillRegistry.class);
         if (registry.skills == null) {
             registry.skills = new LinkedHashMap<>();
         }
         return registry;
     }
 
-    private void writeRegistry(SkillRegistry registry) throws Exception {
+    private void writeRegistry(LocalSkillRegistry registry) throws Exception {
         Files.createDirectories(skillsRoot);
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(registryPath.toFile(), registry);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class SkillRegistry {
+    public static class LocalSkillRegistry {
         public Map<String, SkillRecord> skills = new LinkedHashMap<>();
     }
 
@@ -528,35 +618,4 @@ public class SkillService {
         }
     }
 
-    private class ReadSkillToolCallback implements ToolCallback {
-
-        private final ToolDefinition toolDefinition = ToolDefinition.builder()
-                .name("read_skill")
-                .description("""
-                        Load the full SKILL.md content for one enabled Skill by name. Use this when the user's task clearly matches one of the available Skill descriptions in the system prompt. The input must be JSON like {"skill_name":"frontend-design"}.
-                        """)
-                .inputSchema("""
-                        {
-                          "type": "object",
-                          "properties": {
-                            "skill_name": {
-                              "type": "string",
-                              "description": "The exact enabled Skill name to load."
-                            }
-                          },
-                          "required": ["skill_name"]
-                        }
-                        """)
-                .build();
-
-        @Override
-        public ToolDefinition getToolDefinition() {
-            return toolDefinition;
-        }
-
-        @Override
-        public String call(String toolInput) {
-            return readSkillForTool(toolInput);
-        }
-    }
 }

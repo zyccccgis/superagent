@@ -117,6 +117,10 @@ public class MySqlAgentExecutionMemoryService implements AgentExecutionMemorySer
             return;
         }
         boolean thresholdReached = isSuccessThresholdReached(memory.getSessionId());
+        boolean explicitMemoryIntent = hasExplicitMemoryIntent(memory.getUserInput());
+        if (!thresholdReached && !explicitMemoryIntent) {
+            return;
+        }
         try {
             MemoryExtractRequest request = new MemoryExtractRequest();
             request.setSessionId(memory.getSessionId());
@@ -130,7 +134,7 @@ public class MySqlAgentExecutionMemoryService implements AgentExecutionMemorySer
             logger.info("长期记忆自动抽取完成, sessionId: {}, executionId: {}, trigger: {}, extractedCount: {}, targetPath: {}",
                     memory.getSessionId(),
                     memory.getExecutionId(),
-                    thresholdReached ? "threshold" : "single-turn",
+                    thresholdReached ? "threshold" : "explicit-intent",
                     response.getExtractedCount(),
                     response.getTargetPath());
         } catch (Exception e) {
@@ -148,6 +152,20 @@ public class MySqlAgentExecutionMemoryService implements AgentExecutionMemorySer
                 .eq(AgentExecutionMemory::getStatus, "SUCCESS"));
         long count = successCount == null ? 0 : successCount;
         return count > 0 && count % autoExtractionSuccessThreshold == 0;
+    }
+
+    private boolean hasExplicitMemoryIntent(String userInput) {
+        if (!hasText(userInput)) {
+            return false;
+        }
+        String text = userInput.toLowerCase();
+        return text.contains("记住")
+                || text.contains("记一下")
+                || text.contains("记下来")
+                || text.contains("以后都")
+                || text.contains("以后不要")
+                || text.contains("下次")
+                || text.contains("remember");
     }
 
     private void compressOldMemoriesIfNeeded(String sessionId) {
