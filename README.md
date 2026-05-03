@@ -54,22 +54,38 @@ SuperBizAgent 不是一个简单的聊天接口，而是一个面向企业场景
 
 ### 首页 / 对话控制台
 
-![Home](docs/images/对话窗口.png)
+![Home](docs/对话窗口.png)
 
-### 长短期记忆系统
+### 长短期记忆
 
-![Memory](docs/images/长期记忆.png)
+![Memory](docs/长期记忆.png)
 
-![Memory](docs/images/短期记忆.png)
+![Memory](docs/短期记忆.png)
 
-### AIOps 诊断任务
+### RAG知识库
 
-![AIOps](docs/images/aiops.png)
+![RAG](docs/知识库召回系统.png)
 
-### 工具与 MCP 管理
+### Tools与MCP管理
 
-![Tools](docs/images/tools.png)
+![Tools](docs/Tools管理.png)
+![MCP](docs/MCP管理.png)
 
+### Skills
+
+![Tools](docs/Skills管理.png)
+
+### 定时任务
+
+![Tools](docs/定时任务运行.png)
+
+### 执行观察
+
+![Tools](docs/模型trace记录.png)
+
+### 沙箱测试
+
+![Tools](docs/沙箱系统.png)
 ---
 
 ## 技术栈
