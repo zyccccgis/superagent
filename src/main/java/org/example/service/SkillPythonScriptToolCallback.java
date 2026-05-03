@@ -2,6 +2,7 @@ package org.example.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.beans.factory.annotation.Value;
@@ -78,6 +79,11 @@ public class SkillPythonScriptToolCallback implements ToolCallback {
 
     @Override
     public String call(String toolInput) {
+        return call(toolInput, null);
+    }
+
+    @Override
+    public String call(String toolInput, ToolContext toolContext) {
         if (!enabled) {
             return "run_skill_python_script 已禁用。";
         }

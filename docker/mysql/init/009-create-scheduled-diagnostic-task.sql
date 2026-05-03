@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS scheduled_diagnostic_task (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  schedule_id VARCHAR(64) NOT NULL COMMENT '定时任务业务ID',
+  task_name VARCHAR(128) NOT NULL COMMENT '任务名称',
+  enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+  user_question TEXT NOT NULL COMMENT '定时提问内容',
+  prompt_template LONGTEXT DEFAULT NULL COMMENT 'Plan-Execute 提示词模板',
+  interval_minutes INT NOT NULL DEFAULT 60 COMMENT '执行间隔分钟',
+  next_run_at DATETIME(3) NOT NULL COMMENT '下次运行时间',
+  last_run_at DATETIME(3) DEFAULT NULL COMMENT '最近运行时间',
+  last_task_id VARCHAR(64) DEFAULT NULL COMMENT '最近一次诊断任务ID',
+  last_status VARCHAR(32) DEFAULT NULL COMMENT '最近一次运行状态',
+  last_result_summary TEXT DEFAULT NULL COMMENT '最近一次运行摘要',
+  created_by VARCHAR(64) DEFAULT NULL COMMENT '创建人',
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_schedule_id (schedule_id),
+  KEY idx_enabled_next_run_at (enabled, next_run_at),
+  KEY idx_updated_at (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='定时排查任务配置表';

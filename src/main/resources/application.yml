@@ -105,6 +105,24 @@ skills:
     timeout-seconds: 30
     max-output-chars: 12000
 
+sandbox:
+  enabled: ${SANDBOX_ENABLED:true}
+  docker-command: ${SANDBOX_DOCKER_COMMAND:docker}
+  python-image: ${SANDBOX_PYTHON_IMAGE:superbiz-agent:latest}
+  python-entrypoint: ${SANDBOX_PYTHON_ENTRYPOINT:python3}
+  app-root: ${SANDBOX_APP_ROOT:./sandbox}
+  mount-type: ${SANDBOX_MOUNT_TYPE:volume}
+  volume-name: ${SANDBOX_VOLUME_NAME:superbiz-sandbox-data}
+  host-root: ${SANDBOX_HOST_ROOT:./sandbox}
+  container-root: ${SANDBOX_CONTAINER_ROOT:/sandbox}
+  network: ${SANDBOX_NETWORK:none}
+  cpus: ${SANDBOX_CPUS:1}
+  memory: ${SANDBOX_MEMORY:512m}
+  pids-limit: ${SANDBOX_PIDS_LIMIT:128}
+  timeout-seconds: ${SANDBOX_TIMEOUT_SECONDS:30}
+  max-output-chars: ${SANDBOX_MAX_OUTPUT_CHARS:12000}
+  keep-runs: ${SANDBOX_KEEP_RUNS:false}
+
 # Prometheus 配置
 prometheus:
   base-url: http://localhost:9090

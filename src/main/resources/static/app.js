@@ -11,8 +11,15 @@ class SuperBizConsole {
         this.mcpServers = [];
         this.mcpTools = [];
         this.skills = [];
+        this.sandboxStatus = null;
+        this.sandboxLastResult = null;
         this.traces = [];
+        this.scheduledTasks = [];
+        this.scheduledRunItems = [];
         this.selectedTraceId = null;
+        this.selectedScheduleId = null;
+        this.selectedScheduledRunId = null;
+        this.editingScheduleId = null;
         this.toolsView = 'local';
         this.selectedSkillName = null;
         this.selectedRagDocId = null;
@@ -53,6 +60,11 @@ class SuperBizConsole {
             { method: 'GET', path: '/api/mcp/tools', purpose: '查询当前 MCP 工具快照' },
             { method: 'GET', path: '/api/skills', purpose: '查询已安装 Skills' },
             { method: 'POST', path: '/api/skills/install', purpose: '从 ZIP URL 安装 Skill' },
+            { method: 'GET', path: '/api/sandbox/status', purpose: '查询 Docker 沙箱运行状态和挂载配置' },
+            { method: 'POST', path: '/api/sandbox/test', purpose: '在 Docker 沙箱中执行一段 Python 测试代码' },
+            { method: 'GET', path: '/api/scheduled-diagnostics', purpose: '查询定时排查任务' },
+            { method: 'POST', path: '/api/scheduled-diagnostics', purpose: '创建定时排查任务' },
+            { method: 'POST', path: '/api/scheduled-diagnostics/{scheduleId}/run', purpose: '立即运行定时排查任务' },
             { method: 'GET', path: '/api/traces', purpose: '查询 Agent 执行 Trace 列表' },
             { method: 'GET', path: '/api/traces/{traceId}', purpose: '查询 Agent 执行 Trace 详情' },
             { method: 'GET', path: '/milvus/health', purpose: '检测向量库健康状态' }
@@ -69,12 +81,16 @@ class SuperBizConsole {
         this.ragPageBtn = document.getElementById('ragPageBtn');
         this.toolsPageBtn = document.getElementById('toolsPageBtn');
         this.skillsPageBtn = document.getElementById('skillsPageBtn');
+        this.scheduledPageBtn = document.getElementById('scheduledPageBtn');
+        this.sandboxPageBtn = document.getElementById('sandboxPageBtn');
         this.tracesPageBtn = document.getElementById('tracesPageBtn');
         this.chatPage = document.getElementById('chatPage');
         this.historyPage = document.getElementById('historyPage');
         this.ragPage = document.getElementById('ragPage');
         this.toolsPage = document.getElementById('toolsPage');
         this.skillsPage = document.getElementById('skillsPage');
+        this.scheduledPage = document.getElementById('scheduledPage');
+        this.sandboxPage = document.getElementById('sandboxPage');
         this.tracesPage = document.getElementById('tracesPage');
         this.sidebarSessionId = document.getElementById('sidebarSessionId');
         this.copySessionBtn = document.getElementById('copySessionBtn');
@@ -145,6 +161,29 @@ class SuperBizConsole {
         this.skillsMeta = document.getElementById('skillsMeta');
         this.skillsList = document.getElementById('skillsList');
         this.skillDetail = document.getElementById('skillDetail');
+        this.refreshScheduledBtn = document.getElementById('refreshScheduledBtn');
+        this.scheduledMeta = document.getElementById('scheduledMeta');
+        this.scheduledForm = document.getElementById('scheduledForm');
+        this.scheduledTaskName = document.getElementById('scheduledTaskName');
+        this.scheduledQuestion = document.getElementById('scheduledQuestion');
+        this.scheduledPrompt = document.getElementById('scheduledPrompt');
+        this.scheduledInterval = document.getElementById('scheduledInterval');
+        this.scheduledNextRunAt = document.getElementById('scheduledNextRunAt');
+        this.scheduledEnabled = document.getElementById('scheduledEnabled');
+        this.resetScheduledFormBtn = document.getElementById('resetScheduledFormBtn');
+        this.scheduledList = document.getElementById('scheduledList');
+        this.scheduledRunsMeta = document.getElementById('scheduledRunsMeta');
+        this.runScheduledNowBtn = document.getElementById('runScheduledNowBtn');
+        this.exportScheduledReportBtn = document.getElementById('exportScheduledReportBtn');
+        this.scheduledRunsEl = document.getElementById('scheduledRuns');
+        this.scheduledReport = document.getElementById('scheduledReport');
+        this.refreshSandboxStatusBtn = document.getElementById('refreshSandboxStatusBtn');
+        this.runSandboxSmokeBtn = document.getElementById('runSandboxSmokeBtn');
+        this.sandboxCodeInput = document.getElementById('sandboxCodeInput');
+        this.sandboxArgsInput = document.getElementById('sandboxArgsInput');
+        this.runSandboxCodeBtn = document.getElementById('runSandboxCodeBtn');
+        this.sandboxStatusCards = document.getElementById('sandboxStatusCards');
+        this.sandboxResult = document.getElementById('sandboxResult');
         this.refreshTracesBtn = document.getElementById('refreshTracesBtn');
         this.traceKeyword = document.getElementById('traceKeyword');
         this.traceStatus = document.getElementById('traceStatus');
@@ -164,6 +203,8 @@ class SuperBizConsole {
         this.ragPageBtn.addEventListener('click', () => this.switchPage('rag'));
         this.toolsPageBtn.addEventListener('click', () => this.switchPage('tools'));
         this.skillsPageBtn.addEventListener('click', () => this.switchPage('skills'));
+        this.scheduledPageBtn.addEventListener('click', () => this.switchPage('scheduled'));
+        this.sandboxPageBtn.addEventListener('click', () => this.switchPage('sandbox'));
         this.tracesPageBtn.addEventListener('click', () => this.switchPage('traces'));
         this.copySessionBtn.addEventListener('click', () => this.copySessionId());
         this.newSessionBtn.addEventListener('click', () => this.startNewSession());
@@ -223,6 +264,17 @@ class SuperBizConsole {
         this.localToolsTabBtn.addEventListener('click', () => this.switchToolsView('local'));
         this.mcpToolsTabBtn.addEventListener('click', () => this.switchToolsView('mcp'));
         this.refreshSkillsBtn.addEventListener('click', () => this.refreshSkills(true));
+        this.refreshScheduledBtn.addEventListener('click', () => this.refreshScheduledTasks(true));
+        this.scheduledForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            this.saveScheduledTask();
+        });
+        this.resetScheduledFormBtn.addEventListener('click', () => this.resetScheduledForm());
+        this.runScheduledNowBtn.addEventListener('click', () => this.runSelectedScheduleNow());
+        this.exportScheduledReportBtn.addEventListener('click', () => this.exportScheduledReport());
+        this.refreshSandboxStatusBtn.addEventListener('click', () => this.refreshSandboxStatus(true));
+        this.runSandboxSmokeBtn.addEventListener('click', () => this.runSandboxSmokeTest());
+        this.runSandboxCodeBtn.addEventListener('click', () => this.runSandboxCode());
         this.refreshMcpBtn.addEventListener('click', () => this.refreshMcpRuntime(true));
         this.mcpForm.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -269,6 +321,9 @@ class SuperBizConsole {
         this.renderMcpServers();
         this.renderMcpTools();
         this.renderSkills();
+        this.renderScheduledTasks();
+        this.renderSandboxStatus();
+        this.renderSandboxResult();
         this.renderTraces();
         this.updateSessionDisplay();
         this.updateChatMeta();
@@ -279,18 +334,24 @@ class SuperBizConsole {
         const showRag = page === 'rag';
         const showTools = page === 'tools';
         const showSkills = page === 'skills';
+        const showScheduled = page === 'scheduled';
+        const showSandbox = page === 'sandbox';
         const showTraces = page === 'traces';
-        this.chatPage.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills && !showTraces);
+        this.chatPage.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills && !showScheduled && !showSandbox && !showTraces);
         this.historyPage.classList.toggle('active', showHistory);
         this.ragPage.classList.toggle('active', showRag);
         this.toolsPage.classList.toggle('active', showTools);
         this.skillsPage.classList.toggle('active', showSkills);
+        this.scheduledPage.classList.toggle('active', showScheduled);
+        this.sandboxPage.classList.toggle('active', showSandbox);
         this.tracesPage.classList.toggle('active', showTraces);
-        this.chatPageBtn.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills && !showTraces);
+        this.chatPageBtn.classList.toggle('active', !showHistory && !showRag && !showTools && !showSkills && !showScheduled && !showSandbox && !showTraces);
         this.historyPageBtn.classList.toggle('active', showHistory);
         this.ragPageBtn.classList.toggle('active', showRag);
         this.toolsPageBtn.classList.toggle('active', showTools);
         this.skillsPageBtn.classList.toggle('active', showSkills);
+        this.scheduledPageBtn.classList.toggle('active', showScheduled);
+        this.sandboxPageBtn.classList.toggle('active', showSandbox);
         this.tracesPageBtn.classList.toggle('active', showTraces);
         if (showHistory) {
             this.captureCurrentSessionToHistory();
@@ -305,6 +366,12 @@ class SuperBizConsole {
         }
         if (showSkills) {
             this.refreshSkills(false);
+        }
+        if (showScheduled) {
+            this.refreshScheduledTasks(false);
+        }
+        if (showSandbox) {
+            this.refreshSandboxStatus(false);
         }
         if (showTraces) {
             this.refreshTraces(false);
@@ -1526,6 +1593,396 @@ class SuperBizConsole {
         }
     }
 
+    async refreshScheduledTasks(showToast = false) {
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/scheduled-diagnostics?page=1&pageSize=50`);
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || '定时排查任务查询失败');
+            }
+            this.scheduledTasks = payload.data.items || [];
+            this.renderScheduledTasks();
+            if (showToast) this.showToast('定时排查任务已刷新');
+        } catch (error) {
+            this.scheduledList.innerHTML = `<div class="history-detail-empty">无法加载定时任务：${this.escapeHtml(error.message)}</div>`;
+            if (showToast) this.showToast(`定时任务加载失败：${error.message}`);
+        }
+    }
+
+    renderScheduledTasks() {
+        if (!this.scheduledList || !this.scheduledMeta) return;
+        const enabledCount = this.scheduledTasks.filter(task => task.enabled).length;
+        this.scheduledMeta.textContent = `${this.scheduledTasks.length} 个任务 · ${enabledCount} 个启用`;
+        this.scheduledList.innerHTML = this.scheduledTasks.map(task => `
+            <article class="scheduled-card ${task.scheduleId === this.selectedScheduleId ? 'active' : ''}" data-schedule-id="${this.escapeAttr(task.scheduleId)}">
+                <div class="scheduled-card-main">
+                    <div class="tool-name">${this.escapeHtml(task.taskName || '-')}</div>
+                    <div class="tool-description">${this.escapeHtml(this.truncate(task.userQuestion || '', 120))}</div>
+                    <div class="tool-meta-row">
+                        <span>${task.enabled ? '已启用' : '已停用'}</span>
+                        <span>每 ${task.intervalMinutes || '-'} 分钟</span>
+                        <span>下次 ${this.formatDate(task.nextRunAt)}</span>
+                    </div>
+                    <div class="tool-meta-row">
+                        <span>最近 ${this.escapeHtml(task.lastStatus || '-')}</span>
+                        <span>${this.formatDate(task.lastRunAt)}</span>
+                    </div>
+                </div>
+                <div class="mcp-actions">
+                    <button class="secondary-btn compact-btn" data-action="edit" data-schedule-id="${this.escapeAttr(task.scheduleId)}" type="button">编辑</button>
+                    <button class="secondary-btn compact-btn" data-action="run" data-schedule-id="${this.escapeAttr(task.scheduleId)}" type="button">运行</button>
+                    <button class="secondary-btn compact-btn danger" data-action="delete" data-schedule-id="${this.escapeAttr(task.scheduleId)}" type="button">删除</button>
+                </div>
+            </article>
+        `).join('') || '<div class="history-detail-empty">还没有定时排查任务。</div>';
+
+        this.scheduledList.querySelectorAll('.scheduled-card').forEach(card => {
+            card.addEventListener('click', (event) => {
+                if (event.target.closest('button')) return;
+                this.selectScheduledTask(card.dataset.scheduleId);
+            });
+        });
+        this.scheduledList.querySelectorAll('button[data-action]').forEach(button => {
+            button.addEventListener('click', () => this.handleScheduledAction(button.dataset.action, button.dataset.scheduleId));
+        });
+    }
+
+    selectScheduledTask(scheduleId) {
+        this.selectedScheduleId = scheduleId;
+        this.selectedScheduledRunId = null;
+        const task = this.scheduledTasks.find(item => item.scheduleId === scheduleId);
+        if (task) this.fillScheduledForm(task);
+        this.scheduledReport.innerHTML = '<div class="history-detail-empty">选择一条运行记录查看报告。</div>';
+        this.updateScheduledReportExportState();
+        this.renderScheduledTasks();
+        this.refreshScheduledRuns(scheduleId);
+    }
+
+    fillScheduledForm(task) {
+        this.editingScheduleId = task.scheduleId;
+        this.scheduledTaskName.value = task.taskName || '';
+        this.scheduledQuestion.value = task.userQuestion || '';
+        this.scheduledPrompt.value = task.promptTemplate || '';
+        this.scheduledInterval.value = task.intervalMinutes || 60;
+        this.scheduledNextRunAt.value = this.toDatetimeLocal(task.nextRunAt);
+        this.scheduledEnabled.checked = Boolean(task.enabled);
+    }
+
+    resetScheduledForm() {
+        this.editingScheduleId = null;
+        this.selectedScheduleId = null;
+        this.scheduledTaskName.value = '';
+        this.scheduledQuestion.value = '请检查当前系统是否存在异常告警、日志错误或性能风险。';
+        this.scheduledPrompt.value = '你是企业级 SRE，请使用 Plan-Execute 方式执行定时排查。';
+        this.scheduledInterval.value = 60;
+        this.scheduledNextRunAt.value = this.toDatetimeLocal(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+        this.scheduledEnabled.checked = true;
+        this.scheduledRunItems = [];
+        this.selectedScheduledRunId = null;
+        this.scheduledRunsMeta.textContent = '选择任务查看运行记录';
+        this.scheduledRunsEl.innerHTML = '<div class="history-detail-empty">选择任务查看运行记录。</div>';
+        this.scheduledReport.innerHTML = '<div class="history-detail-empty">选择一条运行记录查看报告。</div>';
+        this.updateScheduledReportExportState();
+        this.renderScheduledTasks();
+    }
+
+    async saveScheduledTask() {
+        try {
+            const body = {
+                taskName: this.scheduledTaskName.value.trim(),
+                userQuestion: this.scheduledQuestion.value.trim(),
+                promptTemplate: this.scheduledPrompt.value.trim(),
+                intervalMinutes: Number(this.scheduledInterval.value || 60),
+                nextRunAt: this.scheduledNextRunAt.value,
+                enabled: this.scheduledEnabled.checked,
+                createdBy: 'web'
+            };
+            const url = this.editingScheduleId
+                ? `${this.apiBaseUrl}/scheduled-diagnostics/${encodeURIComponent(this.editingScheduleId)}`
+                : `${this.apiBaseUrl}/scheduled-diagnostics`;
+            const payload = await this.fetchJson(url, {
+                method: this.editingScheduleId ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (payload.code !== 200 || !payload.data) throw new Error(payload.message || '保存失败');
+            this.selectedScheduleId = payload.data.scheduleId;
+            this.editingScheduleId = payload.data.scheduleId;
+            await this.refreshScheduledTasks(false);
+            this.showToast('定时排查任务已保存');
+        } catch (error) {
+            this.showToast(`保存失败：${error.message}`);
+        }
+    }
+
+    async handleScheduledAction(action, scheduleId) {
+        if (action === 'edit') {
+            this.selectScheduledTask(scheduleId);
+            return;
+        }
+        if (action === 'run') {
+            await this.runScheduleNow(scheduleId);
+            return;
+        }
+        if (action === 'delete') {
+            try {
+                const payload = await this.fetchJson(`${this.apiBaseUrl}/scheduled-diagnostics/${encodeURIComponent(scheduleId)}`, { method: 'DELETE' });
+                if (payload.code !== 200) throw new Error(payload.message || '删除失败');
+                if (this.selectedScheduleId === scheduleId) this.resetScheduledForm();
+                await this.refreshScheduledTasks(false);
+                this.showToast('定时排查任务已删除');
+            } catch (error) {
+                this.showToast(`删除失败：${error.message}`);
+            }
+        }
+    }
+
+    async runSelectedScheduleNow() {
+        if (!this.selectedScheduleId) {
+            this.showToast('请先选择一个定时排查任务');
+            return;
+        }
+        await this.runScheduleNow(this.selectedScheduleId);
+    }
+
+    async runScheduleNow(scheduleId) {
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/scheduled-diagnostics/${encodeURIComponent(scheduleId)}/run`, { method: 'POST' });
+            if (payload.code !== 200 || !payload.data) throw new Error(payload.message || '运行失败');
+            this.showToast(`已触发运行：${payload.data.taskId}`);
+            this.selectedScheduleId = scheduleId;
+            await this.refreshScheduledTasks(false);
+            await this.refreshScheduledRuns(scheduleId);
+        } catch (error) {
+            this.showToast(`运行失败：${error.message}`);
+        }
+    }
+
+    async refreshScheduledRuns(scheduleId) {
+        if (!scheduleId) return;
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/scheduled-diagnostics/${encodeURIComponent(scheduleId)}/runs?page=1&pageSize=20`);
+            if (payload.code !== 200 || !payload.data) throw new Error(payload.message || '运行记录查询失败');
+            this.scheduledRunItems = payload.data.items || [];
+            this.selectedScheduledRunId = null;
+            this.renderScheduledRuns();
+            this.updateScheduledReportExportState();
+        } catch (error) {
+            this.scheduledRunsEl.innerHTML = `<div class="history-detail-empty">无法加载运行记录：${this.escapeHtml(error.message)}</div>`;
+            this.updateScheduledReportExportState();
+        }
+    }
+
+    renderScheduledRuns() {
+        this.scheduledRunsMeta.textContent = `${this.scheduledRunItems.length} 条运行记录`;
+        this.scheduledRunsEl.innerHTML = this.scheduledRunItems.map(run => `
+            <article class="scheduled-run-card ${run.taskId === this.selectedScheduledRunId ? 'active' : ''}" data-task-id="${this.escapeAttr(run.taskId)}">
+                <div class="trace-card-top">
+                    <span class="trace-status ${String(run.status || '').toLowerCase()}">${this.escapeHtml(run.status || '-')}</span>
+                    <strong>${this.escapeHtml(this.formatDuration(run.durationMs))}</strong>
+                </div>
+                <div class="trace-question">${this.escapeHtml(this.truncate(run.inputSummary || '-', 120))}</div>
+                <div class="tool-meta-row">
+                    <span>${this.formatDate(run.startedAt)}</span>
+                    <span>${this.escapeHtml(run.taskId)}</span>
+                </div>
+            </article>
+        `).join('') || '<div class="history-detail-empty">还没有运行记录。</div>';
+        this.scheduledRunsEl.querySelectorAll('.scheduled-run-card').forEach(card => {
+            card.addEventListener('click', () => this.renderScheduledReport(card.dataset.taskId));
+        });
+    }
+
+    renderScheduledReport(taskId) {
+        const run = this.scheduledRunItems.find(item => item.taskId === taskId);
+        if (!run) return;
+        this.selectedScheduledRunId = taskId;
+        this.renderScheduledRuns();
+        const content = run.status === 'SUCCESS'
+            ? (run.finalReport || '任务成功，但没有报告内容。')
+            : `任务状态：${run.status}\n\n${run.errorMessage || '暂无结果。'}`;
+        this.scheduledReport.innerHTML = `
+            <div class="detail-title">${this.escapeHtml(run.taskId)}</div>
+            <div class="detail-meta">
+                <span><strong>状态</strong>${this.escapeHtml(run.status || '-')}</span>
+                <span><strong>开始</strong>${this.formatDate(run.startedAt)}</span>
+                <span><strong>耗时</strong>${this.escapeHtml(this.formatDuration(run.durationMs))}</span>
+            </div>
+            <div class="scheduled-report-markdown">${this.renderMarkdown(content)}</div>
+        `;
+        this.scheduledReport.querySelectorAll('pre code').forEach(block => {
+            if (window.hljs) hljs.highlightElement(block);
+        });
+        this.updateScheduledReportExportState();
+    }
+
+    updateScheduledReportExportState() {
+        if (!this.exportScheduledReportBtn) return;
+        this.exportScheduledReportBtn.disabled = !this.selectedScheduledRunId;
+    }
+
+    exportScheduledReport() {
+        const run = this.scheduledRunItems.find(item => item.taskId === this.selectedScheduledRunId);
+        if (!run) {
+            this.showToast('请先选择一条运行记录');
+            return;
+        }
+        const task = this.scheduledTasks.find(item => item.scheduleId === this.selectedScheduleId);
+        const report = run.status === 'SUCCESS'
+            ? (run.finalReport || '任务成功，但没有报告内容。')
+            : `任务状态：${run.status}\n\n${run.errorMessage || '暂无结果。'}`;
+        const title = task?.taskName || '定时排查报告';
+        const content = [
+            `# ${title}`,
+            '',
+            `- 任务 ID: ${this.selectedScheduleId || '-'}`,
+            `- 运行 ID: ${run.taskId || '-'}`,
+            `- 状态: ${run.status || '-'}`,
+            `- 开始时间: ${this.formatDate(run.startedAt)}`,
+            `- 耗时: ${this.formatDuration(run.durationMs)}`,
+            '',
+            '## 定时提问',
+            '',
+            task?.userQuestion || run.inputSummary || '-',
+            '',
+            '## 运行报告',
+            '',
+            report
+        ].join('\n');
+        const filename = `${this.safeFilename(title)}-${this.safeFilename(run.taskId || 'report')}.md`;
+        this.downloadTextFile(filename, content, 'text/markdown;charset=utf-8');
+        this.showToast('报告已导出');
+    }
+
+    async refreshSandboxStatus(showToast = false) {
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/sandbox/status`);
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || '沙箱状态查询失败');
+            }
+            this.sandboxStatus = payload.data;
+            this.renderSandboxStatus();
+            if (showToast) this.showToast('沙箱状态已刷新');
+        } catch (error) {
+            this.sandboxStatusCards.innerHTML = `<div class="history-detail-empty">无法加载沙箱状态：${this.escapeHtml(error.message)}</div>`;
+            if (showToast) this.showToast(`沙箱状态查询失败：${error.message}`);
+        }
+    }
+
+    renderSandboxStatus() {
+        if (!this.sandboxStatusCards) return;
+        if (!this.sandboxStatus) {
+            this.sandboxStatusCards.innerHTML = '<div class="history-detail-empty">点击刷新状态查看沙箱配置。</div>';
+            return;
+        }
+        const items = [
+            ['启用状态', this.sandboxStatus.enabled ? 'ENABLED' : 'DISABLED', this.sandboxStatus.enabled ? 'success' : 'failed'],
+            ['Docker', this.sandboxStatus.dockerAvailable ? 'AVAILABLE' : 'UNAVAILABLE', this.sandboxStatus.dockerAvailable ? 'success' : 'failed'],
+            ['镜像', this.sandboxStatus.imageAvailable ? 'READY' : 'MISSING', this.sandboxStatus.imageAvailable ? 'success' : 'failed'],
+            ['网络', this.sandboxStatus.networkMode || '-'],
+            ['镜像名', this.sandboxStatus.pythonImage || '-'],
+            ['挂载', this.sandboxStatus.mountSpec || '-'],
+            ['资源限制', `${this.sandboxStatus.cpus || '-'} CPU / ${this.sandboxStatus.memory || '-'}`],
+            ['超时', `${this.sandboxStatus.timeoutSeconds || '-'}s`]
+        ];
+        this.sandboxStatusCards.innerHTML = items.map(([label, value, status]) => `
+            <div class="sandbox-status-card">
+                <span>${this.escapeHtml(label)}</span>
+                <strong class="${status ? `trace-status ${status}` : ''}">${this.escapeHtml(value)}</strong>
+            </div>
+        `).join('') + this.renderSandboxStatusHint();
+    }
+
+    renderSandboxStatusHint() {
+        if (!this.sandboxStatus) return '';
+        if (this.sandboxStatus.imageAvailable) return '';
+        const image = this.sandboxStatus.pythonImage || 'superbiz-agent:latest';
+        return `
+            <div class="sandbox-status-hint">
+                <strong>沙箱镜像不存在</strong>
+                <span>请先在项目根目录执行 <code>docker build -t ${this.escapeHtml(image)} .</code>，或使用 <code>make up</code> 让 compose 自动构建应用镜像。</span>
+            </div>
+        `;
+    }
+
+    async runSandboxSmokeTest() {
+        await this.runSandboxRequest(null);
+    }
+
+    async runSandboxCode() {
+        const code = this.sandboxCodeInput.value.trim();
+        if (!code) {
+            this.showToast('请输入要执行的 Python 代码');
+            return;
+        }
+        const args = this.sandboxArgsInput.value.trim()
+            ? this.sandboxArgsInput.value.trim().split(/\s+/)
+            : [];
+        await this.runSandboxRequest({ code, args });
+    }
+
+    async runSandboxRequest(body) {
+        this.setSandboxBusy(true);
+        this.sandboxResult.innerHTML = '<div class="history-detail-empty">沙箱执行中...</div>';
+        try {
+            const payload = await this.fetchJson(`${this.apiBaseUrl}/sandbox/test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: body ? JSON.stringify(body) : '{}'
+            });
+            if (payload.code !== 200 || !payload.data) {
+                throw new Error(payload.message || '沙箱执行失败');
+            }
+            this.sandboxLastResult = payload.data;
+            this.renderSandboxResult();
+            this.showToast(payload.data.exitCode === 0 ? '沙箱测试通过' : `沙箱测试退出码 ${payload.data.exitCode}`);
+        } catch (error) {
+            this.sandboxLastResult = null;
+            this.sandboxResult.innerHTML = `<div class="history-detail-empty">沙箱执行失败：${this.escapeHtml(error.message)}</div>`;
+            this.showToast(`沙箱执行失败：${error.message}`);
+        } finally {
+            this.setSandboxBusy(false);
+            this.refreshSandboxStatus(false);
+        }
+    }
+
+    renderSandboxResult() {
+        if (!this.sandboxResult) return;
+        if (!this.sandboxLastResult) {
+            this.sandboxResult.innerHTML = '<div class="history-detail-empty">运行测试后查看 stdout、stderr 和 docker 命令。</div>';
+            return;
+        }
+        const result = this.sandboxLastResult;
+        this.sandboxResult.innerHTML = `
+            <div class="sandbox-result-header">
+                <span class="trace-status ${result.exitCode === 0 ? 'success' : 'failed'}">exit ${this.escapeHtml(result.exitCode)}</span>
+                <span>${this.escapeHtml(this.formatDuration(result.durationMs))}</span>
+                <span>${result.timeout ? 'TIMEOUT' : 'FINISHED'}</span>
+            </div>
+            <div class="detail-meta">
+                <span><strong>Run ID</strong>${this.escapeHtml(result.runId || '-')}</span>
+                <span><strong>Image</strong>${this.escapeHtml(result.image || '-')}</span>
+            </div>
+            <details class="trace-collapse" open>
+                <summary>stdout</summary>
+                <pre class="trace-summary">${this.escapeHtml(result.stdout || '')}</pre>
+            </details>
+            <details class="trace-collapse" ${result.stderr ? 'open' : ''}>
+                <summary>stderr</summary>
+                <pre class="trace-summary">${this.escapeHtml(result.stderr || '')}</pre>
+            </details>
+            <details class="trace-collapse">
+                <summary>Docker 命令</summary>
+                <pre class="trace-summary">${this.escapeHtml(result.command || '')}</pre>
+            </details>
+        `;
+    }
+
+    setSandboxBusy(isBusy) {
+        this.runSandboxSmokeBtn.disabled = isBusy;
+        this.runSandboxCodeBtn.disabled = isBusy;
+        this.refreshSandboxStatusBtn.disabled = isBusy;
+    }
+
     async refreshTraces(showToast = false) {
         try {
             const params = new URLSearchParams({
@@ -1745,7 +2202,7 @@ class SuperBizConsole {
         if (!content) return '';
         if (!window.marked) return this.escapeHtml(content);
         try {
-            return marked.parse(content);
+            return marked.parse(content, { gfm: true, breaks: true });
         } catch {
             return this.escapeHtml(content);
         }
@@ -1814,15 +2271,51 @@ class SuperBizConsole {
 
     formatDate(value) {
         if (!value) return '-';
-        const date = new Date(value);
+        const date = this.parseDateValue(value);
         if (Number.isNaN(date.getTime())) return String(value);
-        return date.toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        const pad = number => String(number).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    parseDateValue(value) {
+        if (Array.isArray(value)) {
+            const [year, month = 1, day = 1, hour = 0, minute = 0, second = 0] = value;
+            return new Date(year, month - 1, day, hour, minute, second);
+        }
+        if (typeof value === 'string') {
+            const normalized = value.trim().replace(' ', 'T');
+            return new Date(normalized);
+        }
+        return new Date(value);
+    }
+
+    toDatetimeLocal(value) {
+        if (!value) return '';
+        const date = this.parseDateValue(value);
+        if (Number.isNaN(date.getTime())) return '';
+        const offsetMs = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+    }
+
+    safeFilename(value) {
+        return String(value || 'document')
+            .trim()
+            .replace(/[\\/:*?"<>|]+/g, '-')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .slice(0, 80) || 'document';
+    }
+
+    downloadTextFile(filename, content, mimeType) {
+        const blob = new Blob([content], { type: mimeType || 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
     }
 
     escapeHtml(value) {

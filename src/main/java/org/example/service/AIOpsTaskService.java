@@ -5,10 +5,12 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.dto.AIOpsRequest;
+import org.example.dto.AIOpsTaskListResponse;
 import org.example.dto.AIOpsTaskResponse;
 import org.example.entity.AgentDiagnosticTask;
 import org.example.entity.DiagnosticTaskStatus;
@@ -85,6 +87,24 @@ public class AIOpsTaskService {
         }
 
         return AIOpsTaskResponse.fromEntity(task);
+    }
+
+    public AIOpsTaskListResponse listTasks(String triggerSource, String createdBy, Integer page, Integer pageSize) {
+        int current = page == null || page < 1 ? 1 : page;
+        int size = pageSize == null || pageSize < 1 ? 20 : Math.min(pageSize, 100);
+        LambdaQueryWrapper<AgentDiagnosticTask> wrapper = new LambdaQueryWrapper<AgentDiagnosticTask>()
+                .orderByDesc(AgentDiagnosticTask::getCreatedAt);
+        if (StringUtils.hasText(triggerSource) && !"all".equalsIgnoreCase(triggerSource)) {
+            wrapper.eq(AgentDiagnosticTask::getTriggerSource, triggerSource.trim());
+        }
+        if (StringUtils.hasText(createdBy)) {
+            wrapper.eq(AgentDiagnosticTask::getCreatedBy, createdBy.trim());
+        }
+        Page<AgentDiagnosticTask> result = taskMapper.selectPage(new Page<>(current, size), wrapper);
+        AIOpsTaskListResponse response = new AIOpsTaskListResponse();
+        response.setItems(result.getRecords().stream().map(AIOpsTaskResponse::fromEntity).toList());
+        response.setTotal(result.getTotal());
+        return response;
     }
 
     @Async

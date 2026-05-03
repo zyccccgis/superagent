@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SuperBiz Agent Console</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=sandbox-ui-20260503">
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
     <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/es/highlight.min.js"></script>
@@ -40,6 +40,14 @@
                 <button class="nav-item" id="skillsPageBtn" type="button">
                     <span class="nav-icon">◇</span>
                     <span>Skills</span>
+                </button>
+                <button class="nav-item" id="scheduledPageBtn" type="button">
+                    <span class="nav-icon">⏱</span>
+                    <span>定时排查</span>
+                </button>
+                <button class="nav-item" id="sandboxPageBtn" type="button">
+                    <span class="nav-icon">▣</span>
+                    <span>沙箱测试</span>
                 </button>
                 <button class="nav-item" id="tracesPageBtn" type="button">
                     <span class="nav-icon">◷</span>
@@ -358,6 +366,53 @@
                 </div>
             </section>
 
+            <section class="page" id="sandboxPage">
+                <header class="page-header">
+                    <div>
+                        <p class="eyebrow">Sandbox Runtime</p>
+                        <h1>沙箱测试</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="secondary-btn" id="refreshSandboxStatusBtn" type="button">刷新状态</button>
+                        <button class="accent-btn" id="runSandboxSmokeBtn" type="button">运行默认测试</button>
+                    </div>
+                </header>
+
+                <div class="sandbox-layout">
+                    <section class="sandbox-editor-panel">
+                        <div class="table-header">
+                            <div>
+                                <div class="toolbar-title">Python 测试代码</div>
+                                <div class="toolbar-meta">代码会通过 /api/sandbox/test 在 Docker 沙箱中执行</div>
+                            </div>
+                        </div>
+                        <textarea id="sandboxCodeInput" spellcheck="false">import os
+import sys
+import platform
+
+print("sandbox-ok")
+print("python=" + sys.version.split()[0])
+print("platform=" + platform.platform())
+print("cwd=" + os.getcwd())
+print("args=" + ",".join(sys.argv[1:]))
+</textarea>
+                        <div class="sandbox-actions">
+                            <input id="sandboxArgsInput" type="text" placeholder="可选参数，用空格分隔，例如 alpha beta">
+                            <button class="accent-btn" id="runSandboxCodeBtn" type="button">执行代码</button>
+                        </div>
+                    </section>
+
+                    <section class="sandbox-result-panel">
+                        <div class="sandbox-status-grid" id="sandboxStatusCards">
+                            <div class="history-detail-empty">点击刷新状态查看沙箱配置。</div>
+                        </div>
+                        <div class="sandbox-result" id="sandboxResult">
+                            <div class="history-detail-empty">运行测试后查看 stdout、stderr 和 docker 命令。</div>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
             <section class="page" id="tracesPage">
                 <header class="page-header">
                     <div>
@@ -412,10 +467,95 @@
                     </aside>
                 </div>
             </section>
+
+            <section class="page" id="scheduledPage">
+                <header class="page-header">
+                    <div>
+                        <p class="eyebrow">Scheduled Diagnostics</p>
+                        <h1>定时排查任务</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button class="accent-btn" id="refreshScheduledBtn" type="button">刷新</button>
+                    </div>
+                </header>
+
+                <div class="scheduled-workbench">
+                    <section class="scheduled-list-panel">
+                        <div class="scheduled-panel-header">
+                            <div>
+                                <div class="toolbar-title">任务列表</div>
+                                <div class="toolbar-meta" id="scheduledMeta">等待加载</div>
+                            </div>
+                            <button class="secondary-btn compact-btn" id="resetScheduledFormBtn" type="button">新建</button>
+                        </div>
+                        <div class="scheduled-list" id="scheduledList"></div>
+                    </section>
+
+                    <section class="scheduled-editor-panel">
+                        <div class="scheduled-panel-header">
+                            <div>
+                                <div class="toolbar-title">排查配置</div>
+                                <div class="toolbar-meta">Plan-Execute 提示词与触发周期</div>
+                            </div>
+                        </div>
+                        <form class="scheduled-form" id="scheduledForm">
+                            <label>
+                                <span>任务名称</span>
+                                <input id="scheduledTaskName" type="text" maxlength="128" placeholder="例如：每小时 OnCall 巡检">
+                            </label>
+                            <label>
+                                <span>定时提问</span>
+                                <textarea id="scheduledQuestion" rows="4" placeholder="例如：检查最近一小时是否存在 CPU、内存、错误日志异常"></textarea>
+                            </label>
+                            <label>
+                                <span>Plan-Execute 提示词</span>
+                                <textarea id="scheduledPrompt" rows="7" placeholder="描述排查步骤、工具使用约束和输出格式"></textarea>
+                            </label>
+                            <div class="scheduled-form-grid">
+                                <label>
+                                    <span>执行间隔（分钟）</span>
+                                    <input id="scheduledInterval" type="number" min="1" max="1440" value="60">
+                                </label>
+                                <label>
+                                    <span>下次执行时间</span>
+                                    <input id="scheduledNextRunAt" type="datetime-local">
+                                </label>
+                            </div>
+                            <label class="inline-check">
+                                <input id="scheduledEnabled" type="checkbox" checked>
+                                <span>启用定时触发</span>
+                            </label>
+                            <div class="scheduled-form-actions">
+                                <button class="accent-btn" id="saveScheduledBtn" type="submit">保存任务</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <section class="scheduled-output-panel">
+                        <div class="scheduled-panel-header">
+                            <div>
+                                <div class="toolbar-title">运行记录</div>
+                                <div class="toolbar-meta" id="scheduledRunsMeta">选择任务查看运行记录</div>
+                            </div>
+                            <button class="accent-btn compact-btn" id="runScheduledNowBtn" type="button">立即运行</button>
+                        </div>
+                        <div class="scheduled-runs" id="scheduledRuns"></div>
+                        <div class="scheduled-report-wrap">
+                            <div class="scheduled-report-title">
+                                <span>运行报告</span>
+                                <button class="secondary-btn compact-btn" id="exportScheduledReportBtn" type="button" disabled>导出 Markdown</button>
+                            </div>
+                            <div class="scheduled-report" id="scheduledReport">
+                                <div class="history-detail-empty">选择一条运行记录查看报告。</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </section>
         </main>
     </div>
 
     <div class="toast" id="toast" hidden></div>
-    <script src="app.js"></script>
+    <script src="app.js?v=sandbox-ui-20260503"></script>
 </body>
 </html>

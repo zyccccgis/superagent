@@ -1821,6 +1821,424 @@ h1 {
     z-index: 20;
 }
 
+.sandbox-layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(420px, 0.95fr) minmax(0, 1.05fr);
+    gap: 16px;
+}
+
+.sandbox-editor-panel,
+.sandbox-result-panel {
+    min-height: 0;
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#sandboxCodeInput {
+    flex: 1;
+    min-height: 360px;
+    width: 100%;
+    border: 0;
+    border-top: 1px solid #e5eaf0;
+    border-bottom: 1px solid #e5eaf0;
+    padding: 16px;
+    resize: none;
+    outline: none;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+.sandbox-actions {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+}
+
+.sandbox-actions input {
+    height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0 12px;
+    min-width: 0;
+}
+
+.sandbox-status-grid {
+    flex-shrink: 0;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    border-bottom: 1px solid #e5eaf0;
+    background: #fbfcfe;
+}
+
+.sandbox-status-card {
+    min-width: 0;
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    padding: 12px;
+    background: #ffffff;
+}
+
+.sandbox-status-card span {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.sandbox-status-card strong {
+    display: block;
+    color: #17212b;
+    overflow-wrap: anywhere;
+}
+
+.sandbox-status-hint {
+    grid-column: 1 / -1;
+    border: 1px solid #fed7aa;
+    border-radius: 8px;
+    padding: 12px;
+    background: #fff7ed;
+    color: #9a3412;
+    line-height: 1.55;
+}
+
+.sandbox-status-hint strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.sandbox-status-hint code {
+    border-radius: 4px;
+    background: #ffedd5;
+    padding: 2px 5px;
+}
+
+.sandbox-result {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px;
+}
+
+.sandbox-result-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.scheduled-workbench {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 310px minmax(360px, 0.9fr) minmax(460px, 1.1fr);
+    gap: 14px;
+}
+
+.scheduled-list-panel,
+.scheduled-editor-panel,
+.scheduled-output-panel {
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid #e5eaf0;
+    background: #ffffff;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.scheduled-panel-header {
+    min-height: 58px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e5eaf0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.scheduled-form {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: #fbfcfe;
+}
+
+.scheduled-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.scheduled-form input,
+.scheduled-form textarea {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #17212b;
+    font-weight: 500;
+}
+
+.scheduled-form input {
+    height: 38px;
+    padding: 0 10px;
+}
+
+.scheduled-form textarea {
+    padding: 10px;
+    line-height: 1.55;
+    resize: vertical;
+}
+
+#scheduledQuestion {
+    min-height: 112px;
+}
+
+#scheduledPrompt {
+    min-height: 176px;
+}
+
+.scheduled-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: 10px;
+}
+
+.scheduled-form .inline-check {
+    height: 38px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.scheduled-form .inline-check input {
+    width: 16px;
+    height: 16px;
+}
+
+.scheduled-form-actions {
+    margin-top: auto;
+    padding-top: 4px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.scheduled-list,
+.scheduled-runs {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #fbfcfe;
+}
+
+.scheduled-output-panel {
+    background: #ffffff;
+}
+
+.scheduled-runs {
+    flex: 0 0 36%;
+    border-bottom: 1px solid #e5eaf0;
+}
+
+.scheduled-report-wrap {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+}
+
+.scheduled-report-title {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 900;
+    border-bottom: 1px solid #e5eaf0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.scheduled-report-title .compact-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.scheduled-report {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px 16px;
+}
+
+.scheduled-report-markdown {
+    width: 100%;
+    padding: 16px;
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #17212b;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+}
+
+.scheduled-report-markdown h1,
+.scheduled-report-markdown h2,
+.scheduled-report-markdown h3 {
+    margin: 18px 0 10px;
+    color: #17212b;
+    line-height: 1.35;
+}
+
+.scheduled-report-markdown h1:first-child,
+.scheduled-report-markdown h2:first-child,
+.scheduled-report-markdown h3:first-child {
+    margin-top: 0;
+}
+
+.scheduled-report-markdown h1 {
+    font-size: 22px;
+}
+
+.scheduled-report-markdown h2 {
+    font-size: 18px;
+}
+
+.scheduled-report-markdown h3 {
+    font-size: 15px;
+}
+
+.scheduled-report-markdown p,
+.scheduled-report-markdown ul,
+.scheduled-report-markdown ol,
+.scheduled-report-markdown blockquote,
+.scheduled-report-markdown table,
+.scheduled-report-markdown pre {
+    margin: 0 0 12px;
+}
+
+.scheduled-report-markdown ul,
+.scheduled-report-markdown ol {
+    padding-left: 22px;
+}
+
+.scheduled-report-markdown li + li {
+    margin-top: 4px;
+}
+
+.scheduled-report-markdown code {
+    border-radius: 4px;
+    background: #eef2f6;
+    padding: 2px 5px;
+    font-size: 12px;
+}
+
+.scheduled-report-markdown pre {
+    overflow: auto;
+    padding: 12px;
+    border-radius: 8px;
+    background: #0f172a;
+}
+
+.scheduled-report-markdown pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+}
+
+.scheduled-report-markdown table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.scheduled-report-markdown th,
+.scheduled-report-markdown td {
+    border: 1px solid #e5eaf0;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.scheduled-report-markdown th {
+    background: #f8fafc;
+    font-weight: 800;
+}
+
+.scheduled-card,
+.scheduled-run-card {
+    border: 1px solid #e5eaf0;
+    border-radius: 8px;
+    padding: 12px;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.scheduled-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.scheduled-card:hover,
+.scheduled-card.active,
+.scheduled-run-card:hover,
+.scheduled-run-card.active {
+    border-color: #0f766e;
+    background: #f0fdfa;
+}
+
+.scheduled-card-main {
+    min-width: 0;
+}
+
+.scheduled-card .mcp-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.scheduled-card .compact-btn {
+    width: 100%;
+}
+
+.scheduled-run-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 @media (max-width: 1100px) {
     .app-shell {
         grid-template-columns: 220px minmax(0, 1fr);
@@ -1836,6 +2254,8 @@ h1 {
     .tools-layout,
     .mcp-layout,
     .skills-layout,
+    .scheduled-workbench,
+    .sandbox-layout,
     .trace-layout,
     .trace-detail-columns {
         grid-template-columns: 1fr;
@@ -1850,10 +2270,35 @@ h1 {
     .mcp-tools-panel,
     .skills-list-panel,
     .skill-detail-panel,
+    .scheduled-list-panel,
+    .scheduled-editor-panel,
+    .scheduled-output-panel,
+    .sandbox-editor-panel,
+    .sandbox-result-panel,
     .trace-list-panel,
     .trace-detail-panel,
     .trace-column {
         overflow: visible;
+    }
+
+    .scheduled-workbench,
+    .scheduled-list-panel,
+    .scheduled-editor-panel,
+    .scheduled-output-panel,
+    .scheduled-form,
+    .scheduled-list,
+    .scheduled-runs,
+    .scheduled-report,
+    .sandbox-layout,
+    .sandbox-editor-panel,
+    .sandbox-result-panel,
+    .sandbox-result {
+        height: auto;
+        overflow: visible;
+    }
+
+    .scheduled-runs {
+        flex-basis: auto;
     }
 
     .trace-metric-grid {
@@ -1888,6 +2333,13 @@ h1 {
 
     .nav-list {
         flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 4px;
+    }
+
+    .nav-item {
+        width: auto;
+        flex: 0 0 auto;
     }
 
     .side-status {
@@ -1905,6 +2357,8 @@ h1 {
     #ragPage,
     #toolsPage,
     #skillsPage,
+    #scheduledPage,
+    #sandboxPage,
     #tracesPage {
         overflow: visible;
     }
@@ -1920,12 +2374,24 @@ h1 {
     .mcp-layout,
     .skills-layout,
     .trace-layout,
+    .scheduled-workbench,
+    .sandbox-layout,
     .trace-detail-columns,
     .tools-list-panel,
     .tools-detail-panel,
     .mcp-tools-panel,
     .skills-list-panel,
     .skill-detail-panel,
+    .scheduled-list-panel,
+    .scheduled-editor-panel,
+    .scheduled-output-panel,
+    .scheduled-form,
+    .scheduled-list,
+    .scheduled-runs,
+    .scheduled-report,
+    .sandbox-editor-panel,
+    .sandbox-result-panel,
+    .sandbox-result,
     .trace-list-panel,
     .trace-detail-panel,
     .trace-column {
@@ -1944,7 +2410,8 @@ h1 {
 
     .page-header,
     .conversation-toolbar,
-    .table-header {
+    .table-header,
+    .scheduled-panel-header {
         flex-direction: column;
         align-items: stretch;
     }
@@ -1960,5 +2427,12 @@ h1 {
 
     .messages {
         min-height: 420px;
+    }
+
+    .scheduled-form-grid,
+    .scheduled-card .mcp-actions,
+    .sandbox-actions,
+    .sandbox-status-grid {
+        grid-template-columns: 1fr;
     }
 }

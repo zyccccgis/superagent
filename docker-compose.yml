@@ -97,6 +97,7 @@ services:
     image: superbiz-agent:latest
     container_name: superbiz-agent
     restart: unless-stopped
+    user: root
     environment:
       TZ: Asia/Shanghai
       SERVER_PORT: 9900
@@ -112,12 +113,25 @@ services:
       MEMORY_BASE_PATH: /app/memory
       SKILLS_BASE_PATH: /app/skills
       FILE_UPLOAD_PATH: /app/uploads
+      SANDBOX_ENABLED: ${SANDBOX_ENABLED:-true}
+      SANDBOX_PYTHON_IMAGE: ${SANDBOX_PYTHON_IMAGE:-superbiz-agent:latest}
+      SANDBOX_PYTHON_ENTRYPOINT: ${SANDBOX_PYTHON_ENTRYPOINT:-python3}
+      SANDBOX_APP_ROOT: /app/sandbox
+      SANDBOX_MOUNT_TYPE: volume
+      SANDBOX_VOLUME_NAME: superbiz-sandbox-data
+      SANDBOX_CONTAINER_ROOT: /sandbox
+      SANDBOX_NETWORK: ${SANDBOX_NETWORK:-none}
+      SANDBOX_CPUS: ${SANDBOX_CPUS:-1}
+      SANDBOX_MEMORY: ${SANDBOX_MEMORY:-512m}
+      SANDBOX_TIMEOUT_SECONDS: ${SANDBOX_TIMEOUT_SECONDS:-30}
     ports:
       - "${APP_PORT:-9900}:9900"
     volumes:
       - ./memory:/app/memory
       - ./skills:/app/skills
       - ./uploads:/app/uploads
+      - sandbox-data:/app/sandbox
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       mysql:
         condition: service_healthy
@@ -129,3 +143,5 @@ volumes:
   etcd-data:
   minio-data:
   milvus-data:
+  sandbox-data:
+    name: superbiz-sandbox-data
